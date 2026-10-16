@@ -10,6 +10,12 @@ def setup_logger(log_dir: str = "logs", log_level: str = "INFO", app_name: str =
     """
     Path(log_dir).mkdir(parents=True, exist_ok=True)
 
+    if hasattr(sys.stdout, "reconfigure"):
+        try:
+            sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        except Exception:
+            pass
+
     try:
         from loguru import logger
         logger.remove()
