@@ -1,0 +1,129 @@
+# Core Kit (`core_kit`)
+
+Thư viện nền tảng module dùng chung (Shared Core Library) cho cả hệ thống **Web (FastAPI + Jinja2)** và **Desktop App (PySide6)**.
+
+---
+
+## 1. Cài đặt trực tiếp từ GitHub
+
+Bạn có thể cài đặt toàn bộ hoặc cài theo từng nhóm module (Extras) để tối ưu dung lượng:
+
+```bash
+# Cài đặt toàn bộ tính năng
+pip install "git+https://github.com/your-username/core_kit.git#egg=core_kit[all]"
+
+# Dự án Web (FastAPI) chỉ cần: Cấu hình, Database, Xác thực
+pip install "git+https://github.com/your-username/core_kit.git#egg=core_kit[config,db,auth]"
+
+# Dự án Desktop (PySide6) chỉ cần: Client API, Thiết bị in ấn/quét mã, Logger
+pip install "git+https://github.com/your-username/core_kit.git#egg=core_kit[client,devices,logger]"
+```
+
+---
+
+## 2. Hướng dẫn sử dụng các Module
+
+### 2.1. Cấu hình (`core_kit.config`)
+Đọc biến môi trường từ file `.env`:
+```python
+from core_kit.config import BaseAppSettings
+
+class AppSettings(BaseAppSettings):
+    custom_param: str = "default_value"
+
+settings = AppSettings()
+print(settings.database_url)
+```
+
+### 2.2. Cơ sở dữ liệu (`core_kit.database`)
+Dùng chung cho cả FastAPI và PySide6:
+```python
+from core_kit.database import CommonModel, DatabaseManager
+from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy import String
+
+# Khởi tạo quản lý DB
+db_manager = DatabaseManager("sqlite:///./app.db")
+
+# Định nghĩa bảng
+class Product(CommonModel):
+    __tablename__ = "products"
+    name: Mapped[str] = mapped_column(String(100))
+
+# Tạo bảng tự động (chỉ dùng cho test nhanh)
+db_manager.create_tables(CommonModel.metadata)
+
+# Hoặc Quản lý Migration tự động (Alembic):
+# 1. Khởi tạo template cấu hình migration:
+#    init_migration_scaffold(project_dir=".", script_location="migrations")
+# 2. Tự động upgrade schema lên phiên bản mới nhất khi khởi động app:
+db_manager.migrate(script_location="migrations")
+
+# Sử dụng phiên làm việc (Session):
+# 1. Dùng trong PySide6 (Context Manager):
+with db_manager.session_scope() as session:
+    product = Product(name="Mặt hàng A")
+    session.add(product)
+
+# 2. Dùng trong FastAPI (Dependency Injection):
+# @app.get("/products")
+# def get_products(db = Depends(db_manager.get_db)):
+#     return db.query(Product).all()
+```
+
+
+### 2.3. Máy in tem mã vạch TSPL (`core_kit.devices`)
+```python
+from core_kit.devices import TSPLBuilder, TSPLNetworkPrinter
+
+# Tạo mẫu in tem
+builder = TSPLBuilder(width_mm=80, height_mm=50)
+builder.text(x=20, y=20, content="TEN SAN PHAM", x_multi=2, y_multi=2)
+builder.barcode(x=20, y=80, code="SP12345678", height=60)
+builder.dmatrix(x=350, y=80, content="DATA-MATRIX-CODE", size=8)
+tspl_commands = builder.print(copies=1)
+
+# Gửi in qua mạng LAN tới IP máy in
+printer = TSPLNetworkPrinter(host="192.168.1.200", port=9100)
+printer.send_raw(tspl_commands)
+```
+
+### 2.4. Đọc máy quét mã vạch qua COM/Serial (`core_kit.devices`)
+```python
+from core_kit.devices import SerialScannerReader
+
+def on_scan(barcode: str):
+    print(f"Mã quét được: {barcode}")
+
+scanner = SerialScannerReader(port="COM3", baudrate=9600)
+scanner.start_listening(on_barcode_scanned=on_scan)
+
+# Khi tắt app:
+# scanner.stop_listening()
+```
+
+### 2.5. HTTP Client cho Desktop App (`core_kit.api_client`)
+```python
+from core_kit.api_client import BaseApiClient
+
+client = BaseApiClient(base_url="http://localhost:8000")
+
+# Đăng nhập và lưu token
+# token = ...
+# client.set_token(token)
+
+# Gọi API có type hint và tự đính token
+data = client.get("/api/v1/products")
+```
+
+### 2.6. Xác thực & Tiện ích (`core_kit.auth`, `core_kit.utils`)
+```python
+from core_kit.auth import hash_password, verify_password, create_access_token
+from core_kit.utils import format_vn_datetime, now_utc, generate_short_id
+
+hashed = hash_password("123456")
+assert verify_password("123456", hashed)
+
+order_code = f"ORD-{generate_short_id(6)}"
+time_str = format_vn_datetime(now_utc())
+```

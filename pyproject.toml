@@ -1,0 +1,59 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "core_kit"
+version = "0.1.0"
+description = "Shared core library for FastAPI Web and PySide6 Desktop apps"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "pydantic>=2.0",
+]
+
+[project.optional-dependencies]
+# Module Cấu hình
+config = [
+    "pydantic-settings>=2.0",
+]
+
+# Module Cơ sở dữ liệu
+db = [
+    "sqlalchemy>=2.0",
+    "alembic>=1.13.0",
+]
+
+# Module Logging
+logger = [
+    "loguru>=0.7.0",
+]
+
+# Module Xác thực & Bảo mật
+auth = [
+    "pyjwt>=2.8.0",
+    "bcrypt>=4.0.0",
+]
+
+# Module Thiết bị ngoại vi (Máy in tem TSPL, Máy quét Serial/COM)
+devices = [
+    "pyserial>=3.5",
+]
+
+# Module API Client cho Desktop App
+client = [
+    "httpx>=0.25.0",
+]
+
+# Cài đặt tất cả phụ thuộc
+all = [
+    "pydantic-settings>=2.0",
+    "sqlalchemy>=2.0",
+    "alembic>=1.13.0",
+    "loguru>=0.7.0",
+    "pyjwt>=2.8.0",
+    "bcrypt>=4.0.0",
+    "pyserial>=3.5",
+    "httpx>=0.25.0",
+]
+

@@ -1,0 +1,21 @@
+# Core & Cấu hình
+pydantic>=2.0
+pydantic-settings>=2.0
+
+# Cơ sở dữ liệu & ORM
+sqlalchemy>=2.0
+alembic>=1.13.0
+
+# Bảo mật & Xác thực (bcrypt trực tiếp tương thích tốt với Python 3.12+)
+pyjwt>=2.8.0
+bcrypt>=4.0.0
+
+# Thiết bị ngoại vi & HTTP Client
+pyserial>=3.5
+httpx>=0.25.0
+
+# Logging tập trung
+loguru>=0.7.0
+
+# Xử lý PDF (tùy chọn)
+pypdf>=3.17.0
