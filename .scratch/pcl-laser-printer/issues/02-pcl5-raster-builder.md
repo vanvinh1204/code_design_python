@@ -4,9 +4,9 @@
 
 **Blocked by:** 01-dependencies-and-scaffold
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] Implement `PCL5RasterBuilder.__init__` supporting custom width/height (mm), standard paper sizes, tray, feed direction, and DPI
-- [ ] Implement `add_page(image, rotate=0, scale=0.94, shift_x_mm=0.0, shift_y_mm=0.0, auto_center=True)` with Pillow integration
-- [ ] Implement bitwise inversion and PCL 5 raster row packing (`\x1b*b{len}W` + row bytes)
-- [ ] Implement `build() -> bytes` returning PJL header, PCL raster body, and PJL footer
+- [x] Implement `PCL5RasterBuilder.__init__` supporting custom width/height (mm), standard paper sizes, tray, feed direction, and DPI
+- [x] Implement `add_page(image, rotate=0, scale=0.94, shift_x_mm=0.0, shift_y_mm=0.0, auto_center=True)` with Pillow integration
+- [x] Implement bitwise inversion and PCL 5 raster row packing (`\x1b*b{len}W` + row bytes)
+- [x] Implement `build() -> bytes` returning PJL header, PCL raster body, and PJL footer
