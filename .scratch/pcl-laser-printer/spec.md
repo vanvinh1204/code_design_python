@@ -1,6 +1,6 @@
 # PCL 5 Raster & PJL Network Printing Specification
 
-Status: ready-for-agent
+Status: resolved
 
 ## Problem Statement
 

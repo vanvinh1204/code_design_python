@@ -4,8 +4,8 @@
 
 **Blocked by:** 03-network-printer-and-status
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] Create `examples/test_printer_pcl.py` verifying PCL raster serialization, headers, and status parsing without requiring argparse
-- [ ] Verify test execution passes cleanly with zero errors
-- [ ] Update `README.md` Section 2.3 with developer documentation and code examples for PCL laser printing
+- [x] Create `examples/test_printer_pcl.py` verifying PCL raster serialization, headers, and status parsing without requiring argparse
+- [x] Verify test execution passes cleanly with zero errors
+- [x] Update `README.md` Section 2.3 with developer documentation and code examples for PCL laser printing

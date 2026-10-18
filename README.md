@@ -72,11 +72,13 @@ with db_manager.session_scope() as session:
 ```
 
 
-### 2.3. Máy in tem mã vạch TSPL (`core_kit.devices`)
+### 2.3. Thiết bị in ấn mạng (`core_kit.devices`)
+
+#### 2.3.1. Máy in tem mã vạch TSPL
 ```python
 from core_kit.devices import TSPLBuilder, TSPLNetworkPrinter
 
-# Tạo mẫu in tem
+# Tạo mẫu in tem mã vạch
 builder = TSPLBuilder(width_mm=80, height_mm=50)
 builder.text(x=20, y=20, content="TEN SAN PHAM", x_multi=2, y_multi=2)
 builder.barcode(x=20, y=80, code="SP12345678", height=60)
@@ -86,6 +88,50 @@ tspl_commands = builder.print(copies=1)
 # Gửi in qua mạng LAN tới IP máy in
 printer = TSPLNetworkPrinter(host="192.168.1.200", port=9100)
 printer.send_raw(tspl_commands)
+```
+
+#### 2.3.2. Máy in laser mạng PCL 5 Raster & PJL (Fujifilm ApeosPort, HP, Canon, Ricoh)
+Hỗ trợ in trực tiếp qua RAW TCP Socket (cổng 9100) không cần driver hệ điều hành, bù trừ lề chết cơ khí và hỗ trợ khổ tem tùy chỉnh (Short-Edge Feed):
+```python
+from PIL import Image
+from core_kit.devices import PCL5RasterBuilder, PCLNetworkPrinter
+
+# 1. Khởi tạo builder cho khổ tem decal 102 x 148 mm từ Khay 1 (Short-Edge Feed)
+builder = PCL5RasterBuilder(
+    paper_size="CUSTOM",
+    width_mm=102.0,
+    height_mm=148.0,
+    tray="TRAY1",
+    feed_direction="SHORTEDGEFEED",
+    dpi=300,
+    job_name="SHIPPING_LABEL",
+)
+
+# 2. Thêm trang in: tự động xoay, co giãn 0.94 tránh cắt lề cơ khí và căn giữa
+label_image = Image.open("label_artwork.png")
+builder.add_page(
+    image=label_image,
+    rotate=90,
+    scale=0.94,
+    shift_x_mm=0.0,
+    shift_y_mm=0.0,
+    auto_center=True,
+)
+payload = builder.build()
+
+# 3. Kết nối máy in qua mạng, kiểm tra trạng thái phần cứng và gửi lệnh
+printer = PCLNetworkPrinter(host="192.168.1.220", port=9100, timeout=5.0)
+
+# Truy vấn trạng thái máy in (kẹt giấy, hết giấy, sẵn sàng)
+status = printer.get_status()
+print(f"Trạng thái LCD: {status.display} | Sẵn sàng: {status.is_ready}")
+
+if status.is_ready:
+    success = printer.send(payload, verify_ready=True)
+    if success:
+        print("Đã gửi lệnh in laser PCL 5 thành công!")
+else:
+    print(f"Không thể in vì máy in đang báo: {status.display}")
 ```
 
 ### 2.4. Đọc máy quét mã vạch qua COM/Serial (`core_kit.devices`)
