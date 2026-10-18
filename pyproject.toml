@@ -35,9 +35,10 @@ auth = [
     "bcrypt>=4.0.0",
 ]
 
-# Module Thiết bị ngoại vi (Máy in tem TSPL, Máy quét Serial/COM)
+# Module Thiết bị ngoại vi (Máy in tem TSPL, Máy quét Serial/COM, Máy in laser PCL)
 devices = [
     "pyserial>=3.5",
+    "pillow>=10.0.0",
 ]
 
 # Module API Client cho Desktop App
@@ -54,6 +55,7 @@ all = [
     "pyjwt>=2.8.0",
     "bcrypt>=4.0.0",
     "pyserial>=3.5",
+    "pillow>=10.0.0",
     "httpx>=0.25.0",
 ]
 

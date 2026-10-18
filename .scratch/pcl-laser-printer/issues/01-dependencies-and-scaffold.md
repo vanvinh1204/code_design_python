@@ -4,8 +4,8 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] Declare `pillow>=10.0.0` in `[project.optional-dependencies]` under `devices` and `all` in `pyproject.toml`
-- [ ] Add `pillow>=10.0.0` to `requirements.txt` under devices group
-- [ ] Update `src/core_kit/devices/__init__.py` to export `PCL5RasterBuilder`, `PCLNetworkPrinter`, and `PrinterStatus`
+- [x] Declare `pillow>=10.0.0` in `[project.optional-dependencies]` under `devices` and `all` in `pyproject.toml`
+- [x] Add `pillow>=10.0.0` to `requirements.txt` under devices group
+- [x] Update `src/core_kit/devices/__init__.py` to export `PCL5RasterBuilder`, `PCLNetworkPrinter`, and `PrinterStatus`
