@@ -4,6 +4,8 @@ Cung cấp khả năng in trực tiếp qua RAW TCP Socket (cổng 9100) mà kh�
 """
 
 import io
+import re
+import socket
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple, Union
@@ -11,16 +13,98 @@ from typing import Any, Dict, Optional, Tuple, Union
 
 @dataclass
 class PrinterStatus:
-    """Trạng thái thiết bị máy in từ truy vấn PJL INFO STATUS."""
+    """
+    Trạng thái thiết bị máy in từ truy vấn PJL INFO STATUS.
+    """
     is_online: bool = False
     is_ready: bool = False
     display: str = ""
+    code: Optional[int] = None
     raw: str = ""
 
     @classmethod
     def from_raw(cls, raw_status: str) -> "PrinterStatus":
-        """Phân tích chuỗi phản hồi thô từ lệnh @PJL INFO STATUS."""
-        raise NotImplementedError
+        """
+        Phân tích chuỗi phản hồi thô từ lệnh @PJL INFO STATUS hoặc chuỗi trạng thái ngắn.
+
+        Hỗ trợ:
+        - Chuỗi đầy đủ theo chuẩn PJL: CODE=10001, DISPLAY="00 READY", ONLINE=TRUE
+        - Chuỗi trạng thái ngắn trực tiếp: "Ready", "Paper Jam", "Load Tray 1"
+        """
+        raw_text = raw_status.strip() if raw_status else ""
+        if not raw_text:
+            return cls(is_online=False, is_ready=False, display="Unknown", raw="")
+
+        code: Optional[int] = None
+        code_match = re.search(r"\bCODE\s*=\s*(\d+)", raw_text, re.IGNORECASE)
+        if code_match:
+            try:
+                code = int(code_match.group(1))
+            except ValueError:
+                code = None
+
+        # Trích xuất DISPLAY
+        display: str = ""
+        disp_match = re.search(r'\bDISPLAY\s*=\s*"([^"]*)"', raw_text, re.IGNORECASE)
+        if not disp_match:
+            disp_match = re.search(r'\bDISPLAY\s*=\s*([^\r\n]+)', raw_text, re.IGNORECASE)
+
+        if disp_match:
+            display = disp_match.group(1).strip()
+        elif "@PJL" not in raw_text.upper():
+            # Nếu không có từ khóa PJL, chuỗi đầu vào chính là chuỗi thông điệp trực tiếp
+            display = raw_text
+
+        # Xác định ONLINE
+        is_online: bool = True
+        online_match = re.search(r'\bONLINE\s*=\s*([A-Za-z0-9]+)', raw_text, re.IGNORECASE)
+        if not online_match:
+            online_match = re.search(r'\bSTA\s*=\s*([A-Za-z0-9]+)', raw_text, re.IGNORECASE)
+
+        if online_match:
+            val = online_match.group(1).upper()
+            is_online = val in ("TRUE", "ON", "1")
+        elif "OFFLINE" in raw_text.upper():
+            is_online = False
+
+        # Xác định tính sẵn sàng (is_ready)
+        # Các từ khóa thể hiện máy in đang bận, kẹt giấy, hết giấy hoặc mở cửa
+        unready_keywords = [
+            "JAM",
+            "DOOR OPEN",
+            "COVER OPEN",
+            "LOAD",
+            "EMPTY",
+            "OUT OF PAPER",
+            "OFFLINE",
+            "ERROR",
+            "WARMING UP",
+            "BUSY",
+            "PAUSED",
+            "FAULT",
+        ]
+        display_upper = display.upper()
+        raw_upper = raw_text.upper()
+
+        has_error = any(kw in display_upper or kw in raw_upper for kw in unready_keywords)
+
+        if not is_online:
+            is_ready = False
+        elif has_error:
+            is_ready = False
+        elif any(ready_kw in display_upper for ready_kw in ("READY", "IDLE", "SLEEP", "STANDBY")):
+            is_ready = True
+        else:
+            # Nếu trực tuyến và không phát hiện lỗi nào
+            is_ready = True
+
+        return cls(
+            is_online=is_online,
+            is_ready=is_ready,
+            display=display,
+            code=code,
+            raw=raw_status,
+        )
 
 
 class PCL5RasterBuilder:
@@ -234,5 +318,75 @@ class PCL5RasterBuilder:
 
 
 class PCLNetworkPrinter:
-    """Giao tiếp máy in mạng qua RAW TCP Socket."""
-    pass
+    """
+    Giao tiếp máy in mạng qua RAW TCP Socket (cổng 9100).
+    Cung cấp khả năng truy vấn trạng thái phần cứng máy in và gửi luồng dữ liệu in PCL.
+    """
+
+    def __init__(self, host: str, port: int = 9100, timeout: float = 5.0):
+        self.host = host
+        self.port = port
+        self.timeout = timeout
+
+    def get_status(self) -> PrinterStatus:
+        """
+        Truy vấn thông tin trạng thái phần cứng của máy in qua lệnh @PJL INFO STATUS.
+        Trả về đối tượng PrinterStatus chứa thông tin trực tuyến, sẵn sàng và thông điệp LCD.
+        """
+        query = b"\x1b%-12345X@PJL\r\n@PJL INFO STATUS\r\n\x1b%-12345X"
+        response_chunks: list[bytes] = []
+
+        try:
+            with socket.create_connection((self.host, self.port), timeout=self.timeout) as sock:
+                sock.sendall(query)
+                sock.settimeout(self.timeout)
+                while True:
+                    try:
+                        chunk = sock.recv(4096)
+                        if not chunk:
+                            break
+                        response_chunks.append(chunk)
+                        # Dấu hiệu hoàn tất phản hồi PJL (ký tự FormFeed 0x0c hoặc UEL)
+                        if b"\x0c" in chunk or b"\x1b%-12345X" in chunk:
+                            break
+                    except socket.timeout:
+                        break
+
+            raw_text = b"".join(response_chunks).decode("latin1", errors="replace")
+            return PrinterStatus.from_raw(raw_text)
+        except Exception as exc:
+            return PrinterStatus(
+                is_online=False,
+                is_ready=False,
+                display=f"Connection Error: {exc}",
+                raw=str(exc),
+            )
+
+    def send(self, payload: bytes, verify_ready: bool = False) -> bool:
+        """
+        Gửi luồng byte dữ liệu in (PCL/PJL) tới máy in qua socket mạng.
+
+        Args:
+            payload: Chuỗi bytes dữ liệu in (tạo từ PCL5RasterBuilder.build()).
+            verify_ready: Nếu True, kiểm tra trạng thái máy in (is_ready) trước khi gửi.
+
+        Returns:
+            True nếu gửi thành công và socket được đóng nhẹ nhàng (graceful teardown),
+            False nếu máy in không sẵn sàng hoặc xảy ra lỗi kết nối mạng.
+        """
+        if verify_ready:
+            status = self.get_status()
+            if not status.is_ready:
+                return False
+
+        try:
+            with socket.create_connection((self.host, self.port), timeout=self.timeout) as sock:
+                sock.sendall(payload)
+                # Graceful socket shutdown: thông báo cho máy in đã hoàn tất truyền dữ liệu ghi
+                try:
+                    sock.shutdown(socket.SHUT_WR)
+                except Exception:
+                    pass
+            return True
+        except Exception:
+            return False

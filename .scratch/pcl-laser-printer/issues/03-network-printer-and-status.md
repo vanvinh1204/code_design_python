@@ -4,9 +4,9 @@
 
 **Blocked by:** 02-pcl5-raster-builder
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] Implement `PrinterStatus` dataclass with `from_raw` parser detecting "ONLINE", "DISPLAY", and readiness states
-- [ ] Implement `PCLNetworkPrinter.__init__(host, port=9100, timeout=5.0)`
-- [ ] Implement `PCLNetworkPrinter.get_status() -> PrinterStatus` querying `@PJL INFO STATUS`
-- [ ] Implement `PCLNetworkPrinter.send(payload: bytes, verify_ready: bool = False) -> bool` with graceful socket shutdown
+- [x] Implement `PrinterStatus` dataclass with `from_raw` parser detecting "ONLINE", "DISPLAY", and readiness states
+- [x] Implement `PCLNetworkPrinter.__init__(host, port=9100, timeout=5.0)`
+- [x] Implement `PCLNetworkPrinter.get_status() -> PrinterStatus` querying `@PJL INFO STATUS`
+- [x] Implement `PCLNetworkPrinter.send(payload: bytes, verify_ready: bool = False) -> bool` with graceful socket shutdown
