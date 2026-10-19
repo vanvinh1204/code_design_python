@@ -3,7 +3,12 @@ import sys
 from pathlib import Path
 
 
-def setup_logger(log_dir: str = "logs", log_level: str = "INFO", app_name: str = "app"):
+def setup_logger(
+    log_dir: str = "logs",
+    log_level: str = "INFO",
+    app_name: str = "app",
+    file_format: str | None = None,
+):
     """
     Khởi tạo hệ thống ghi log tập trung.
     Hỗ trợ xuất ra cả Console và file xoay vòng (rotating file).
@@ -15,6 +20,8 @@ def setup_logger(log_dir: str = "logs", log_level: str = "INFO", app_name: str =
             sys.stdout.reconfigure(encoding="utf-8", errors="replace")
         except Exception:
             pass
+
+    default_file_fmt = file_format or "{time:YYYY-MM-DD HH:mm:ss.SSS} | {level: <8} | {message}"
 
     try:
         from loguru import logger
@@ -33,6 +40,7 @@ def setup_logger(log_dir: str = "logs", log_level: str = "INFO", app_name: str =
         logger.add(
             log_file_path,
             level=log_level,
+            format=default_file_fmt,
             rotation="00:00",
             retention="30 days",
             compression="zip",
@@ -67,7 +75,11 @@ def setup_logger(log_dir: str = "logs", log_level: str = "INFO", app_name: str =
                 backupCount=30,
                 encoding="utf-8"
             )
-            fh.setFormatter(formatter)
+            file_formatter = logging.Formatter(
+                fmt="%(asctime)s.%(msecs)03d | %(levelname)-8s | %(message)s",
+                datefmt="%Y-%m-%d %H:%M:%S"
+            )
+            fh.setFormatter(file_formatter)
             logger.addHandler(fh)
 
         return logger

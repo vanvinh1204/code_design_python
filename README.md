@@ -107,13 +107,13 @@ builder = PCL5RasterBuilder(
     job_name="SHIPPING_LABEL",
 )
 
-# 2. Thêm trang in: tự động xoay, co giãn 0.94 tránh cắt lề cơ khí và căn giữa
+# 2. Thêm trang in: tự động xoay, co giãn bảo toàn lề cơ khí và bù lề PCL 5
 label_image = Image.open("label_artwork.png")
 builder.add_page(
     image=label_image,
     rotate=90,
-    scale=0.94,
-    shift_x_mm=0.0,
+    scale=(0.89, 0.94),
+    shift_x_mm=-5.0,
     shift_y_mm=0.0,
     auto_center=True,
 )

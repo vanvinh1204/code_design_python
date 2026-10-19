@@ -24,4 +24,5 @@ To preserve minimal core dependencies, `core_kit` handles image processing via P
 
 - Full independent unit test coverage can verify PCL raster byte output and PJL headers in CI/CD without network access.
 - Laser printer hardware margins (~3.5mm dead zone) and custom paper orientations (Short-Edge feed) are safely compensated via scale and offset options.
-- The module is reusable across any PCL 5-compatible network laser printer (HP, Fujifilm, Canon, Xerox, Ricoh, Brother).
+- The module is reusable across any PCL 5-compatible network laser printer (HP, Fujifilm, Canon, Xerox, Ricoh, Brother). Dual PJL custom sizing variables (HP `PAPERWIDTH`/`LENGTH` in decipoints alongside Lexmark/ApeosPort `LCUSTOMPAPERWIDTH`/`HEIGHT` in millimeters) and PCL 5 top-margin/perforation-skip zeroing (`\x1b&l0E\x1b&l0L\x1b*p0x0Y`) prevent 55mm horizontal legal fallback and 20mm vertical margin shifts on enterprise print engines.
+

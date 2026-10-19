@@ -163,7 +163,7 @@ class PCL5RasterBuilder:
         self,
         image: Any,
         rotate: int = 0,
-        scale: float = 0.94,
+        scale: float | tuple[float, float] = (0.89, 0.94),
         shift_x_mm: float = 0.0,
         shift_y_mm: float = 0.0,
         auto_center: bool = True,
@@ -174,8 +174,8 @@ class PCL5RasterBuilder:
         Args:
             image: Đối tượng PIL.Image.Image, đường dẫn file (str/Path) hoặc dữ liệu bytes ảnh.
             rotate: Góc xoay theo chiều kim đồng hồ (0, 90, 180, 270).
-            scale: Hệ số tỷ lệ co giãn (mặc định 0.94 để bù trừ lề chết cơ khí 3.5mm của máy in).
-            shift_x_mm: Độ dịch chuyển ngang theo mm (dương = sang phải, âm = sang trái).
+            scale: Hệ số tỷ lệ co giãn (mặc định (0.89, 0.94) để bù trừ lề cấm cơ khí và bảo toàn toàn bộ nội dung).
+            shift_x_mm: Độ dịch chuyển ngang theo mm (mặc định -5.0 mm để bù trừ lề logic PCL 5 và định tâm khay nạp).
             shift_y_mm: Độ dịch chuyển dọc theo mm (dương = xuống dưới, âm = lên trên).
             auto_center: Tự động căn giữa ảnh vào khổ giấy trước khi áp dụng shift.
         """
@@ -190,8 +190,15 @@ class PCL5RasterBuilder:
         if rotate not in (0, 90, 180, 270):
             raise ValueError(f"Góc xoay không hợp lệ: {rotate}. Chỉ hỗ trợ các góc 0, 90, 180, 270 độ.")
 
-        if scale <= 0:
-            raise ValueError(f"Hệ số co giãn (scale) phải lớn hơn 0, nhận được: {scale}")
+        if isinstance(scale, (tuple, list)):
+            if len(scale) != 2:
+                raise ValueError(f"scale dạng tuple/list phải có đúng 2 phần tử (scale_x, scale_y), nhận được: {scale}")
+            scale_x, scale_y = float(scale[0]), float(scale[1])
+        else:
+            scale_x = scale_y = float(scale)
+
+        if scale_x <= 0 or scale_y <= 0:
+            raise ValueError(f"Hệ số co giãn (scale) phải lớn hơn 0, nhận được: scale_x={scale_x}, scale_y={scale_y}")
 
         # Nạp ảnh từ các định dạng đầu vào hỗ trợ
         if isinstance(image, (str, Path)):
@@ -208,9 +215,9 @@ class PCL5RasterBuilder:
             img = img.rotate(-rotate if hasattr(Image, "Transpose") else rotate, expand=True)
 
         # 2. Co giãn tỷ lệ (Scale)
-        if scale != 1.0:
-            new_w = max(1, int(round(img.width * scale)))
-            new_h = max(1, int(round(img.height * scale)))
+        if scale_x != 1.0 or scale_y != 1.0:
+            new_w = max(1, int(round(img.width * scale_x)))
+            new_h = max(1, int(round(img.height * scale_y)))
             resample = getattr(getattr(Image, "Resampling", Image), "LANCZOS", Image.BICUBIC)
             img = img.resize((new_w, new_h), resample=resample)
 
@@ -243,10 +250,16 @@ class PCL5RasterBuilder:
         last_byte_mask = ((0xFF << (8 - rem_bits)) & 0xFF) if rem_bits != 0 else 0xFF
 
         page_buffer = bytearray()
-        # Lệnh khởi tạo PCL và bắt đầu Raster Graphics tại lề trái
-        page_buffer.extend(b"\x1bE")
-        page_buffer.extend(f"\x1b*t{self.dpi}R".encode("latin1"))
-        page_buffer.extend(b"\x1b*r1A")
+        # Lệnh khởi tạo PCL, thiết lập khổ trang, triệt tiêu lề mặc định và đặt con trỏ tại (0,0)
+        page_buffer.extend(b"\x1bE")             # PCL Reset
+        if self.paper_size == "CUSTOM":
+            page_buffer.extend(b"\x1b&l101A")     # Paper size: Custom (101A trong PCL 5)
+        page_buffer.extend(b"\x1b&l0O")           # Orientation: Portrait
+        page_buffer.extend(b"\x1b&l0E")           # Top margin: 0 lines
+        page_buffer.extend(b"\x1b&l0L")           # Perforation skip: disable (không tự thụt lề 1/2-3/4 inch)
+        page_buffer.extend(b"\x1b*p0x0Y")         # Di chuyển con trỏ in về tuyệt đối tọa độ gốc (0, 0)
+        page_buffer.extend(f"\x1b*t{self.dpi}R".encode("latin1"))  # Thiết lập độ phân giải DPI
+        page_buffer.extend(b"\x1b*r1A")           # Bắt đầu đồ họa raster tại vị trí con trỏ
 
         for y in range(self.canvas_height_px):
             row = raw_bytes[y * row_len : (y + 1) * row_len]
@@ -280,17 +293,30 @@ class PCL5RasterBuilder:
             "@PJL SET DUPLEX = OFF",
         ]
 
+        if self.tray:
+            header_lines.append(f"@PJL SET PAPERSOURCE = {self.tray}")
+            header_lines.append(f"@PJL SET MEDIASOURCE = {self.tray}")
+
         if self.paper_size == "CUSTOM":
             width_decipoints = int(round(self.width_mm * 720.0 / 25.4))
             height_decipoints = int(round(self.height_mm * 720.0 / 25.4))
+            w_mm = int(round(self.width_mm))
+            h_mm = int(round(self.height_mm))
+
             header_lines.append("@PJL SET PAPER = CUSTOM")
+            # Cú pháp chuẩn HP LaserJet (decipoints: 1/720 inch)
             header_lines.append(f"@PJL SET PAPERWIDTH = {width_decipoints}")
             header_lines.append(f"@PJL SET PAPERLENGTH = {height_decipoints}")
+            # Cú pháp chuẩn Fujifilm ApeosPort / Lexmark engine (Millimeters & Custom dimensions)
+            header_lines.append("@PJL SET LCUSTOMPAPERUNITS = MILLIMETERS")
+            header_lines.append(f"@PJL SET LCUSTOMPAPERWIDTH = {w_mm}")
+            header_lines.append(f"@PJL SET LCUSTOMPAPERHEIGHT = {h_mm}")
+            if self.feed_direction in ("SHORTEDGEFEED", "SHORTEDGE") or not self.feed_direction:
+                header_lines.append("@PJL SET LCUSTOMPAPERFEED = SHORTEDGE")
+            elif self.feed_direction in ("LONGEDGEFEED", "LONGEDGE"):
+                header_lines.append("@PJL SET LCUSTOMPAPERFEED = LONGEDGE")
         else:
             header_lines.append(f"@PJL SET PAPER = {self.paper_size}")
-
-        if self.tray:
-            header_lines.append(f"@PJL SET MEDIASOURCE = {self.tray}")
 
         if self.feed_direction == "SHORTEDGEFEED":
             header_lines.append("@PJL SET SHORTEDGEFEED = ON")
