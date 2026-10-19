@@ -32,7 +32,7 @@ def run_pcl_builder_custom_test():
     builder.add_page(
         image=test_img,
         rotate=90,
-        scale=0.94,
+        scale=(0.90, 0.94),
         shift_x_mm=1.5,
         shift_y_mm=-1.5,
         auto_center=True,
