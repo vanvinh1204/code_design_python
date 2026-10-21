@@ -250,10 +250,34 @@ class PCL5RasterBuilder:
         last_byte_mask = ((0xFF << (8 - rem_bits)) & 0xFF) if rem_bits != 0 else 0xFF
 
         page_buffer = bytearray()
-        # Lệnh khởi tạo PCL, thiết lập khổ trang, triệt tiêu lề mặc định và đặt con trỏ tại (0,0)
-        page_buffer.extend(b"\x1bE")             # PCL Reset
+        # Khởi tạo trang PCL: thiết lập nguồn cấp giấy, khổ trang, triệt tiêu lề mặc định và đặt con trỏ tại (0,0)
+
+        # Chọn nguồn cấp giấy PCL 5 (Paper Source - ESC & l <n> H) theo chuẩn LJ4
+        tray_upper = self.tray.upper().strip() if self.tray else ""
+        if tray_upper in ("TRAY1", "CASSETTE1", "TRAY 1", "DRAWER1"):
+            page_buffer.extend(b"\x1b&l1H")       # Tray 1 / Khay gầm chính chuẩn LJ4
+        elif tray_upper in ("TRAY2", "CASSETTE2", "TRAY 2", "DRAWER2"):
+            page_buffer.extend(b"\x1b&l5H")       # Tray 2 / Khay phụ mở rộng
+        elif tray_upper in ("MPFEEDER", "MP", "BYPASS", "MANUAL", "MULTI-PURPOSE", "MPTRAY"):
+            page_buffer.extend(b"\x1b&l2H")       # MP Tray / Khay đa năng Bypass
+        elif tray_upper in ("AUTO", "AUTOSEL"):
+            page_buffer.extend(b"\x1b&l7H")       # Auto Select
+        elif tray_upper.isdigit():
+            page_buffer.extend(f"\x1b&l{tray_upper}H".encode("latin1"))
+
         if self.paper_size == "CUSTOM":
             page_buffer.extend(b"\x1b&l101A")     # Paper size: Custom (101A trong PCL 5)
+        elif self.paper_size == "A4":
+            page_buffer.extend(b"\x1b&l26A")
+        elif self.paper_size == "A5":
+            page_buffer.extend(b"\x1b&l25A")
+        elif self.paper_size == "LETTER":
+            page_buffer.extend(b"\x1b&l2A")
+        elif self.paper_size == "LEGAL":
+            page_buffer.extend(b"\x1b&l3A")
+        elif self.paper_size == "EXECUTIVE":
+            page_buffer.extend(b"\x1b&l1A")
+
         page_buffer.extend(b"\x1b&l0O")           # Orientation: Portrait
         page_buffer.extend(b"\x1b&l0E")           # Top margin: 0 lines
         page_buffer.extend(b"\x1b&l0L")           # Perforation skip: disable (không tự thụt lề 1/2-3/4 inch)
@@ -273,10 +297,9 @@ class PCL5RasterBuilder:
             page_buffer.extend(f"\x1b*b{len(inverted_row)}W".encode("latin1"))
             page_buffer.extend(inverted_row)
 
-        # Kết thúc đồ họa raster, đẩy trang (Form Feed) và Reset PCL
+        # Kết thúc đồ họa raster và đẩy trang (Form Feed)
         page_buffer.extend(b"\x1b*rB")
         page_buffer.extend(b"\x0c")
-        page_buffer.extend(b"\x1bE")
 
         self.pages_pcl_data.append(bytes(page_buffer))
         return self

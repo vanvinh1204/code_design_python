@@ -54,7 +54,7 @@ from PIL import Image, ImageDraw, ImageFont
 from core_kit.devices import PCL5RasterBuilder, PCLNetworkPrinter, PrinterStatus
 
 # Cấu hình mặc định máy in
-DEFAULT_HOST = os.getenv("PRINTER_HOST", "10.45.1.191")
+DEFAULT_HOST = os.getenv("PRINTER_HOST", "10.45.1.193")
 DEFAULT_PORT = int(os.getenv("PRINTER_PORT", "9100"))
 DEFAULT_TRAY = "TRAY1"
 DEFAULT_WIDTH_MM = 102.0

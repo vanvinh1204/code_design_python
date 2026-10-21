@@ -21,7 +21,7 @@ def setup_logger(
         except Exception:
             pass
 
-    default_file_fmt = file_format or "{time:YYYY-MM-DD HH:mm:ss.SSS} | {level: <8} | {message}"
+    default_file_fmt = file_format or "{time:YY.MM.DD HH:mm:ss.SSS} | {level: <8} | {message}"
 
     try:
         from loguru import logger
@@ -31,7 +31,7 @@ def setup_logger(
         logger.add(
             sys.stdout,
             level=log_level,
-            format="<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level: <8}</level> | <cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - <level>{message}</level>",
+            format="<green>{time:YY.MM.DD HH:mm:ss}</green> | <level>{level: <8}</level> | <cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - <level>{message}</level>",
             colorize=True
         )
 
@@ -59,7 +59,7 @@ def setup_logger(
         if not logger.handlers:
             formatter = logging.Formatter(
                 fmt="%(asctime)s | %(levelname)-8s | %(name)s:%(funcName)s:%(lineno)d - %(message)s",
-                datefmt="%Y-%m-%d %H:%M:%S"
+                datefmt="%y.%m.%d %H:%M:%S"
             )
 
             # Console handler
@@ -77,7 +77,7 @@ def setup_logger(
             )
             file_formatter = logging.Formatter(
                 fmt="%(asctime)s.%(msecs)03d | %(levelname)-8s | %(message)s",
-                datefmt="%Y-%m-%d %H:%M:%S"
+                datefmt="%y.%m.%d %H:%M:%S"
             )
             fh.setFormatter(file_formatter)
             logger.addHandler(fh)
