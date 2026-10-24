@@ -10,7 +10,12 @@ readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
     "pydantic>=2.0",
+    "cryptography>=42.0.0",
 ]
+
+[project.scripts]
+encrypt-env = "core_kit.tools.encrypt_env:main"
+core-kit-encrypt-env = "core_kit.tools.encrypt_env:main"
 
 [project.optional-dependencies]
 # Module Cấu hình

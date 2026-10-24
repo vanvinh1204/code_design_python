@@ -24,15 +24,20 @@ pip install "git+https://github.com/your-username/core_kit.git#egg=core_kit[clie
 ## 2. Hướng dẫn sử dụng các Module
 
 ### 2.1. Cấu hình (`core_kit.config`)
-Đọc biến môi trường từ file `.env`:
+Đọc biến môi trường từ file `.env` và **tự động giải mã trong suốt** mọi giá trị bắt đầu bằng hoặc chứa token `enc:...` (mật khẩu CSDL, API key...):
+
 ```python
 from core_kit.config import BaseAppSettings
 
 class AppSettings(BaseAppSettings):
     custom_param: str = "default_value"
+    # Nếu file .env có:
+    # DB_PASSWORD=enc:gAAAAAB...
+    # DATABASE_URL=postgresql://admin:enc:gAAAAAB...@localhost:5432/db
+    # Pydantic sẽ tự động giải mã ra chuỗi thuần túy ngay khi nạp cấu hình!
 
 settings = AppSettings()
-print(settings.database_url)
+print(settings.database_url) # Chuỗi đã được giải mã sẵn sàng kết nối CSDL
 ```
 
 ### 2.2. Cơ sở dữ liệu (`core_kit.database`)
@@ -173,3 +178,35 @@ assert verify_password("123456", hashed)
 order_code = f"ORD-{generate_short_id(6)}"
 time_str = format_vn_datetime(now_utc())
 ```
+
+### 2.7. Công cụ mã hóa cấu hình .env (`core_kit.tools.encrypt_env`)
+
+#### Cách 1: Sử dụng qua dòng lệnh (CLI)
+Sau khi cài đặt `core_kit`, lệnh `encrypt-env` (hoặc `core-kit-encrypt-env`) có sẵn trong terminal:
+```bash
+# 1. Nhập trực tiếp qua tham số:
+encrypt-env "MatKhauCanMaHoa"
+
+# 2. Hoặc chạy không có tham số để nhập ẩn từ bàn phím (tránh lộ trên màn hình):
+encrypt-env
+
+# 3. Chạy qua module python (nếu không cài CLI vào PATH):
+py -m core_kit.tools.encrypt_env "MatKhauCanMaHoa"
+
+# 4. Tùy biến khóa mã hóa (nếu dự án cần dùng khóa riêng):
+encrypt-env "MatKhauCanMaHoa" --key "32_URLSAFE_BASE64_KEY="
+```
+
+#### Cách 2: Gọi trực tiếp từ code Python
+```python
+from core_kit.utils.crypto import encrypt_val, decrypt_val
+
+# Mã hóa chuỗi với tiền tố enc:
+ciphertext = encrypt_val("MySecretDbPassword")
+# -> enc:gAAAAAB...
+
+# Giải mã chuỗi
+plaintext = decrypt_val(ciphertext)
+# -> MySecretDbPassword
+```
+

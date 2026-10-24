@@ -1,6 +1,7 @@
 # Core & Cấu hình
 pydantic>=2.0
 pydantic-settings>=2.0
+cryptography>=42.0.0
 
 # Cơ sở dữ liệu & ORM
 sqlalchemy>=2.0
