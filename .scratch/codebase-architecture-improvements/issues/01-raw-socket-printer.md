@@ -5,10 +5,10 @@ Create a unified, deep `RawSocketPrinter` transport class in `core_kit.devices` 
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] Implement `SocketTransport` protocol with `TcpSocketAdapter` and `FakeSocketTransport`
-- [ ] Implement `RawSocketPrinter` with `send(payload: bytes | str, verify_ready=False, probe=None)` and `get_status(probe=None)`
-- [ ] Implement `PJLStatusProbe` to parse status codes, display strings, and online flags from PJL responses
-- [ ] Refactor `PCLNetworkPrinter` and `TSPLNetworkPrinter` to delegate to `RawSocketPrinter` with `DeprecationWarning`
-- [ ] Write unit tests verifying payload transmission, error handling, and timeout behavior using `FakeSocketTransport`
+- [x] Implement `SocketTransport` protocol with `TcpSocketAdapter` and `FakeSocketTransport`
+- [x] Implement `RawSocketPrinter` with `send(payload: bytes | str, verify_ready=False, probe=None)` and `get_status(probe=None)`
+- [x] Implement `PJLStatusProbe` to parse status codes, display strings, and online flags from PJL responses
+- [x] Refactor `PCLNetworkPrinter` and `TSPLNetworkPrinter` to delegate to `RawSocketPrinter` with `DeprecationWarning`
+- [x] Write unit tests verifying payload transmission, error handling, and timeout behavior using `FakeSocketTransport`

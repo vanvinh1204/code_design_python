@@ -5,10 +5,10 @@ Unify session management in `DatabaseManager` into a single `@contextmanager` ge
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] Implement `DatabaseManager.session()` as the unified transactional context manager
-- [ ] Retain `session_scope()` and `get_db()` as backward-compatible aliases pointing to `session()`
-- [ ] Align `DatabaseManager` with Alembic migration lifecycle and deprecate bare `create_tables`
-- [ ] Upgrade `TimestampMixin` fields to `now_utc` timezone-aware timestamps
-- [ ] Write unit tests for `session()` transaction commit, exception rollback, and timezone-aware model storage
+- [x] Implement `DatabaseManager.session()` as the unified transactional context manager
+- [x] Retain `session_scope()` and `get_db()` as backward-compatible aliases pointing to `session()`
+- [x] Align `DatabaseManager` with Alembic migration lifecycle and deprecate bare `create_tables`
+- [x] Upgrade `TimestampMixin` fields to `now_utc` timezone-aware timestamps
+- [x] Write unit tests for `session()` transaction commit, exception rollback, and timezone-aware model storage

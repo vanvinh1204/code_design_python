@@ -5,9 +5,9 @@ Create a cohesive `AuthManager` class in `core_kit.auth` that encapsulates secre
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] Implement `AuthManager` class with token issuance, decoding, expiration validation, and password verification
-- [ ] Implement `AuthManager.from_settings(settings)` classmethod reading `secret_key`, `jwt_algorithm`, `access_token_expire_minutes`
-- [ ] Maintain standalone `hash_password()` and `verify_password()` in `core_kit.auth`
-- [ ] Write unit tests for `AuthManager` covering token expiration, tampering, custom claims, and password matching
+- [x] Implement `AuthManager` class with token issuance, decoding, expiration validation, and password verification
+- [x] Implement `AuthManager.from_settings(settings)` classmethod reading `secret_key`, `jwt_algorithm`, `access_token_expire_minutes`
+- [x] Maintain standalone `hash_password()` and `verify_password()` in `core_kit.auth`
+- [x] Write unit tests for `AuthManager` covering token expiration, tampering, custom claims, and password matching

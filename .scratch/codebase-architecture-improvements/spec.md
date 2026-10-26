@@ -1,7 +1,7 @@
 # Codebase Architecture Improvements Specification
 
-Status: ready-for-agent
-Labels: ready-for-agent
+Status: resolved
+Labels: resolved
 
 ## Problem Statement
 

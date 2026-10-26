@@ -5,10 +5,10 @@ Create a unified `ConfigVault` class in `core_kit.config.vault` (or `core_kit.ut
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] Implement `ConfigVault` with `encrypt()`, `decrypt()`, `decrypt_mapping()`, and `update_env_file()`
-- [ ] Connect `BaseAppSettings` validator to use `ConfigVault.decrypt_mapping()`
-- [ ] Rewrite `encrypt_env.py` using `sys.argv` without importing `argparse`
-- [ ] Preserve existing functions in `core_kit.utils.crypto` for backward compatibility
-- [ ] Write unit tests for `ConfigVault` and verify `encrypt_env.py` without `argparse`
+- [x] Implement `ConfigVault` with `encrypt()`, `decrypt()`, `decrypt_mapping()`, and `update_env_file()`
+- [x] Connect `BaseAppSettings` validator to use `ConfigVault.decrypt_mapping()`
+- [x] Rewrite `encrypt_env.py` using `sys.argv` without importing `argparse`
+- [x] Preserve existing functions in `core_kit.utils.crypto` for backward compatibility
+- [x] Write unit tests for `ConfigVault` and verify `encrypt_env.py` without `argparse`

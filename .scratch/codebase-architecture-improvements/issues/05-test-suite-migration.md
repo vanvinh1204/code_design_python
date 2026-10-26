@@ -5,10 +5,10 @@ Consolidate and migrate informal testing scripts in `examples/` (`test_devices.p
 
 **Blocked by:** 01-raw-socket-printer, 02-auth-manager, 03-database-session-lifecycle, 04-config-vault
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] Add `tests/test_devices_raw_printer.py` testing `RawSocketPrinter`, `PJLStatusProbe`, and backward compatibility
-- [ ] Add `tests/test_auth_manager.py` testing `AuthManager` token lifecycle and password verification
-- [ ] Add `tests/test_database_manager.py` testing `db_manager.session()` and model timestamp behavior
-- [ ] Add `tests/test_config_vault.py` testing `ConfigVault` and `update_env_file()`
-- [ ] Run full `pytest` suite ensuring all tests pass cleanly with zero warnings
+- [x] Add `tests/test_devices_raw_printer.py` testing `RawSocketPrinter`, `PJLStatusProbe`, and backward compatibility
+- [x] Add `tests/test_auth_manager.py` testing `AuthManager` token lifecycle and password verification
+- [x] Add `tests/test_database_manager.py` testing `db_manager.session()` and model timestamp behavior
+- [x] Add `tests/test_config_vault.py` testing `ConfigVault` and `update_env_file()`
+- [x] Run full `pytest` suite ensuring all tests pass cleanly with zero warnings
