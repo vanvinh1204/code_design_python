@@ -2,24 +2,18 @@ from typing import Any
 from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from core_kit.utils.crypto import PREFIX, decrypt_val
+from core_kit.config.vault import vault, ConfigVault
 
 
 def _decrypt_config_values(data: Any) -> Any:
-    """Tự động đệ quy duyệt và giải mã các giá trị chuỗi mang tiền tố hoặc chứa token enc: trong cấu hình."""
-    if isinstance(data, dict):
-        return {k: _decrypt_config_values(v) for k, v in data.items()}
-    elif isinstance(data, list):
-        return [_decrypt_config_values(item) for item in data]
-    elif isinstance(data, str) and PREFIX in data:
-        return decrypt_val(data)
-    return data
+    """[Tương thích ngược] Giải mã đệ quy mapping qua ConfigVault."""
+    return vault.decrypt_mapping(data)
 
 
 class BaseAppSettings(BaseSettings):
     """
     Lớp cấu hình cơ sở đọc từ file .env và biến môi trường.
-    Tự động giải mã (auto-decrypt) trong suốt mọi giá trị chứa token enc: (như mật khẩu CSDL, API keys).
+    Tự động giải mã (auto-decrypt) trong suốt mọi giá trị chứa token enc: qua ConfigVault.
     """
     app_name: str = Field(default="MyApplication", description="Tên ứng dụng")
     env: str = Field(default="development", description="Môi trường: development, production, test")
@@ -58,5 +52,5 @@ class BaseAppSettings(BaseSettings):
     @model_validator(mode="before")
     @classmethod
     def auto_decrypt_env_fields(cls, values: Any) -> Any:
-        """Bộ lọc tự động giải mã các trường cấu hình được mã hóa bằng Fernet."""
-        return _decrypt_config_values(values)
+        """Bộ lọc tự động giải mã các trường cấu hình được mã hóa bằng Fernet qua ConfigVault."""
+        return vault.decrypt_mapping(values)

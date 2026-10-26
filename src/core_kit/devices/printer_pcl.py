@@ -366,76 +366,41 @@ class PCL5RasterBuilder:
         return header_bytes + body_bytes + footer_bytes
 
 
-class PCLNetworkPrinter:
+from core_kit.devices.printer_raw import (
+    PrinterStatus,
+    RawSocketPrinter,
+    PJLStatusProbe,
+    SocketTransport,
+)
+import warnings
+
+
+class PCLNetworkPrinter(RawSocketPrinter):
     """
-    Giao tiếp máy in mạng qua RAW TCP Socket (cổng 9100).
-    Cung cấp khả năng truy vấn trạng thái phần cứng máy in và gửi luồng dữ liệu in PCL.
+    [DEPRECATED] Lớp giao tiếp máy in mạng PCL cũ.
+    Vui lòng sử dụng 'RawSocketPrinter' từ 'core_kit.devices' cho các dự án mới.
     """
 
-    def __init__(self, host: str, port: int = 9100, timeout: float = 5.0):
-        self.host = host
-        self.port = port
-        self.timeout = timeout
-
-    def get_status(self) -> PrinterStatus:
-        """
-        Truy vấn thông tin trạng thái phần cứng của máy in qua lệnh @PJL INFO STATUS.
-        Trả về đối tượng PrinterStatus chứa thông tin trực tuyến, sẵn sàng và thông điệp LCD.
-        """
-        query = b"\x1b%-12345X@PJL\r\n@PJL INFO STATUS\r\n\x1b%-12345X"
-        response_chunks: list[bytes] = []
-
-        try:
-            with socket.create_connection((self.host, self.port), timeout=self.timeout) as sock:
-                sock.sendall(query)
-                sock.settimeout(self.timeout)
-                while True:
-                    try:
-                        chunk = sock.recv(4096)
-                        if not chunk:
-                            break
-                        response_chunks.append(chunk)
-                        # Dấu hiệu hoàn tất phản hồi PJL (ký tự FormFeed 0x0c hoặc UEL)
-                        if b"\x0c" in chunk or b"\x1b%-12345X" in chunk:
-                            break
-                    except socket.timeout:
-                        break
-
-            raw_text = b"".join(response_chunks).decode("latin1", errors="replace")
-            return PrinterStatus.from_raw(raw_text)
-        except Exception as exc:
-            return PrinterStatus(
-                is_online=False,
-                is_ready=False,
-                display=f"Connection Error: {exc}",
-                raw=str(exc),
-            )
+    def __init__(
+        self,
+        host: str,
+        port: int = 9100,
+        timeout: float = 5.0,
+        transport: Optional[SocketTransport] = None,
+    ):
+        warnings.warn(
+            "PCLNetworkPrinter đã lỗi thời và sẽ bị loại bỏ trong phiên bản tương lai. "
+            "Vui lòng chuyển sang sử dụng 'RawSocketPrinter'.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        super().__init__(host=host, port=port, timeout=timeout, transport=transport)
 
     def send(self, payload: bytes, verify_ready: bool = False) -> bool:
-        """
-        Gửi luồng byte dữ liệu in (PCL/PJL) tới máy in qua socket mạng.
+        """Gửi luồng byte dữ liệu in (PCL/PJL) tới máy in."""
+        return super().send(payload=payload, verify_ready=verify_ready, probe=PJLStatusProbe())
 
-        Args:
-            payload: Chuỗi bytes dữ liệu in (tạo từ PCL5RasterBuilder.build()).
-            verify_ready: Nếu True, kiểm tra trạng thái máy in (is_ready) trước khi gửi.
+    def get_status(self) -> PrinterStatus:
+        """Truy vấn thông tin trạng thái phần cứng của máy in qua lệnh @PJL INFO STATUS."""
+        return super().get_status(probe=PJLStatusProbe())
 
-        Returns:
-            True nếu gửi thành công và socket được đóng nhẹ nhàng (graceful teardown),
-            False nếu máy in không sẵn sàng hoặc xảy ra lỗi kết nối mạng.
-        """
-        if verify_ready:
-            status = self.get_status()
-            if not status.is_ready:
-                return False
-
-        try:
-            with socket.create_connection((self.host, self.port), timeout=self.timeout) as sock:
-                sock.sendall(payload)
-                # Graceful socket shutdown: thông báo cho máy in đã hoàn tất truyền dữ liệu ghi
-                try:
-                    sock.shutdown(socket.SHUT_WR)
-                except Exception:
-                    pass
-            return True
-        except Exception:
-            return False

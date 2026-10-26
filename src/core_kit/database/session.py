@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session, sessionmaker
 class DatabaseManager:
     """
     Quản lý vòng đời kết nối cơ sở dữ liệu và phiên làm việc (Session).
-    Hoạt động tốt cho cả FastAPI (Dependency Injection) và PySide6 (Context Manager).
+    Cung cấp Seam quản lý phiên chuẩn hóa duy nhất dùng cho cả FastAPI và PySide6.
     """
 
     def __init__(self, db_url: str, echo: bool = False, pool_pre_ping: bool = True):
@@ -31,7 +31,10 @@ class DatabaseManager:
         )
 
     def create_tables(self, base_metadata):
-        """Khởi tạo toàn bộ các bảng nếu chưa tồn tại."""
+        """
+        Khởi tạo toàn bộ các bảng nếu chưa tồn tại.
+        Khuyến cáo: Đối với ứng dụng production, ưu tiên dùng 'migrate()' để đồng bộ Alembic revision.
+        """
         base_metadata.create_all(bind=self.engine)
 
     def migrate(
@@ -42,7 +45,7 @@ class DatabaseManager:
     ) -> None:
         """
         Thực thi tự động database migration lên phiên bản chỉ định (mặc định 'head').
-        Hữu ích cho Desktop App (PySide6) tự động nâng cấp schema khi khởi chạy.
+        Hữu ích cho Desktop App (PySide6) tự động nâng cấp schema khi khởi chạy theo ADR-0001.
         """
         from core_kit.database.migration import apply_migrations
 
@@ -53,36 +56,32 @@ class DatabaseManager:
             ini_path=ini_path,
         )
 
-
-    def get_db(self) -> Generator[Session, None, None]:
-        """
-        Dành cho FastAPI Dependency Injection.
-        Ví dụ: def my_endpoint(db: Session = Depends(db_manager.get_db))
-        """
-        session: Session = self.session_factory()
-        try:
-            yield session
-            session.commit()
-        except Exception:
-            session.rollback()
-            raise
-        finally:
-            session.close()
-
     @contextmanager
-    def session_scope(self) -> Generator[Session, None, None]:
+    def session(self) -> Generator[Session, None, None]:
         """
-        Dành cho Desktop App (PySide6) hoặc Background Workers.
-        Ví dụ:
-            with db_manager.session_scope() as session:
+        Seam quản lý phiên làm việc chuẩn duy nhất (Context Manager).
+        Tự động commit khi hoàn tất, rollback khi có lỗi và đóng session.
+        Hoạt động hoàn hảo cho cả:
+        - PySide6 / Background Workers:
+            with db_manager.session() as session:
                 items = session.query(Product).all()
+        - FastAPI Dependency Injection:
+            def my_endpoint(db: Session = Depends(db_manager.session)):
         """
-        session: Session = self.session_factory()
+        sess: Session = self.session_factory()
         try:
-            yield session
-            session.commit()
+            yield sess
+            sess.commit()
         except Exception:
-            session.rollback()
+            sess.rollback()
             raise
         finally:
-            session.close()
+            sess.close()
+
+    def session_scope(self):
+        """[Alias tương thích ngược] Chuyển tiếp tới context manager session()."""
+        return self.session()
+
+    def get_db(self):
+        """[Alias tương thích ngược] Chuyển tiếp tới context manager session()."""
+        return self.session()

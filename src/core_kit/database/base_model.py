@@ -2,6 +2,8 @@ from datetime import datetime
 from sqlalchemy import DateTime, Integer
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
+from core_kit.utils.date_time import now_utc
+
 
 class Base(DeclarativeBase):
     """Lớp ORM cơ sở kế thừa SQLAlchemy DeclarativeBase."""
@@ -9,19 +11,19 @@ class Base(DeclarativeBase):
 
 
 class TimestampMixin:
-    """Mixin cung cấp sẵn thời gian tạo và cập nhật bản ghi."""
+    """Mixin cung cấp sẵn thời gian tạo và cập nhật bản ghi theo chuẩn UTC timezone-aware."""
     created_at: Mapped[datetime] = mapped_column(
-        DateTime,
-        default=datetime.utcnow,
+        DateTime(timezone=True),
+        default=now_utc,
         nullable=False,
-        comment="Thời điểm tạo bản ghi"
+        comment="Thời điểm tạo bản ghi (UTC)"
     )
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime,
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow,
+        DateTime(timezone=True),
+        default=now_utc,
+        onupdate=now_utc,
         nullable=False,
-        comment="Thời điểm cập nhật bản ghi gần nhất"
+        comment="Thời điểm cập nhật bản ghi gần nhất (UTC)"
     )
 
 

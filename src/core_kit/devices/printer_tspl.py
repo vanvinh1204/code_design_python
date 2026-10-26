@@ -74,21 +74,32 @@ class TSPLBuilder:
         return "\r\n".join(self.commands) + "\r\n"
 
 
-class TSPLNetworkPrinter:
+from core_kit.devices.printer_raw import RawSocketPrinter, SocketTransport
+import warnings
+
+
+class TSPLNetworkPrinter(RawSocketPrinter):
     """
-    Gửi lệnh TSPL trực tiếp đến máy in qua mạng LAN/TCP Socket.
+    [DEPRECATED] Gửi lệnh TSPL trực tiếp đến máy in qua mạng LAN/TCP Socket.
+    Vui lòng sử dụng 'RawSocketPrinter' từ 'core_kit.devices' cho các dự án mới.
     """
 
-    def __init__(self, host: str, port: int = 9100, timeout: float = 5.0):
-        self.host = host
-        self.port = port
-        self.timeout = timeout
+    def __init__(
+        self,
+        host: str,
+        port: int = 9100,
+        timeout: float = 5.0,
+        transport: Optional[SocketTransport] = None,
+    ):
+        warnings.warn(
+            "TSPLNetworkPrinter đã lỗi thời và sẽ bị loại bỏ trong phiên bản tương lai. "
+            "Vui lòng chuyển sang sử dụng 'RawSocketPrinter'.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        super().__init__(host=host, port=port, timeout=timeout, transport=transport)
 
     def send_raw(self, tspl_data: str, encoding: str = "utf-8") -> bool:
         """Gửi chuỗi lệnh TSPL tới máy in qua socket."""
-        try:
-            with socket.create_connection((self.host, self.port), timeout=self.timeout) as sock:
-                sock.sendall(tspl_data.encode(encoding))
-            return True
-        except Exception:
-            return False
+        return super().send(payload=tspl_data, encoding=encoding, verify_ready=False)
+

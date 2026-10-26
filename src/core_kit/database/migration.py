@@ -15,6 +15,7 @@ ALEMBIC_INI_TEMPLATE = """# A generic, single database configuration.
 script_location = {script_location}
 prepend_sys_path = .
 version_path_separator = os
+path_separator = os
 
 [loggers]
 keys = root,sqlalchemy,alembic
