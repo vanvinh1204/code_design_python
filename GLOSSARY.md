@@ -15,3 +15,11 @@ _Avoid_: ESC/POS, TSPL header, Job Spool
 **RAW Socket Printing**:
 Cơ chế gửi trực tiếp luồng byte dữ liệu in qua kết nối TCP socket (cổng 9100) đến card mạng máy in mà không qua driver hệ điều hành.
 _Avoid_: Spooler printing, Driver printing, CUPS queue
+
+**Status Probe**:
+Đầu dò trạng thái máy in, nắm trọn một giao thức truy vấn trạng thái: byte lệnh truy vấn, dấu kết thúc phản hồi và cách phân tích phản hồi thành trạng thái thiết bị. Ví dụ hiện có: PJL `@PJL INFO STATUS`.
+_Avoid_: Status parser, Health check, Printer monitor
+
+**Printer Offline**:
+Trạng thái khi không thiết lập được kết nối hoặc truy vấn tới máy in (timeout, bị từ chối kết nối). Khác với máy in trả lời được nhưng đang báo lỗi (kẹt giấy, mở nắp).
+_Avoid_: Connection Error status, Printer error
