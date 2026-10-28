@@ -12,7 +12,7 @@ if hasattr(sys.stdout, "reconfigure"):
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
 from PIL import Image
-from core_kit.devices import PCL5RasterBuilder, PCLNetworkPrinter, PrinterStatus
+from core_kit.devices import PCL5RasterBuilder, PCLNetworkPrinter, PJLStatusProbe
 
 
 def run_pcl_builder_custom_test():
@@ -105,11 +105,12 @@ def run_raster_fidelity_test():
 
 
 def run_printer_status_test():
-    print("4. Kiểm thử giải mã trạng thái máy in (PrinterStatus.from_raw)...")
+    print("4. Kiểm thử giải mã trạng thái máy in (PJLStatusProbe.parse_response)...")
+    probe = PJLStatusProbe()
 
     # Trường hợp 1: Phản hồi chuẩn PJL - Sẵn sàng
     raw_ready = "@PJL INFO STATUS\r\nCODE=10001\r\nDISPLAY=\"00 READY\"\r\nONLINE=TRUE\r\n\x0c"
-    s1 = PrinterStatus.from_raw(raw_ready)
+    s1 = probe.parse_response(raw_ready)
     assert s1.is_online is True, "Phải nhận diện ONLINE=True"
     assert s1.is_ready is True, "Phải nhận diện is_ready=True"
     assert s1.code == 10001, "Mã trạng thái phải là 10001"
@@ -117,29 +118,29 @@ def run_printer_status_test():
 
     # Trường hợp 2: Kẹt giấy (Paper Jam)
     raw_jam = "@PJL INFO STATUS\r\nCODE=11003\r\nDISPLAY=\"Paper Jam\"\r\nONLINE=TRUE\r\n\x0c"
-    s2 = PrinterStatus.from_raw(raw_jam)
+    s2 = probe.parse_response(raw_jam)
     assert s2.is_online is True
     assert s2.is_ready is False, "Khi kẹt giấy is_ready phải là False"
     assert s2.display == "Paper Jam"
 
     # Trường hợp 3: Hết giấy khay 1 (Load Tray 1)
     raw_load = "@PJL INFO STATUS\r\nCODE=11004\r\nDISPLAY=\"Load Tray 1\"\r\nONLINE=TRUE\r\n\x0c"
-    s3 = PrinterStatus.from_raw(raw_load)
+    s3 = probe.parse_response(raw_load)
     assert s3.is_online is True
     assert s3.is_ready is False, "Khi cần nạp giấy is_ready phải là False"
     assert s3.display == "Load Tray 1"
 
     # Trường hợp 4: Cửa máy in mở / Ngoại tuyến
     raw_door = "@PJL INFO STATUS\r\nCODE=10002\r\nDISPLAY=\"Door Open\"\r\nONLINE=FALSE\r\n\x0c"
-    s4 = PrinterStatus.from_raw(raw_door)
+    s4 = probe.parse_response(raw_door)
     assert s4.is_online is False
     assert s4.is_ready is False
     assert s4.display == "Door Open"
 
     # Trường hợp 5: Chuỗi văn bản trực tiếp
-    assert PrinterStatus.from_raw("Ready").is_ready is True
-    assert PrinterStatus.from_raw("Paper Jam").is_ready is False
-    assert PrinterStatus.from_raw("Load Tray 1").is_ready is False
+    assert probe.parse_response("Ready").is_ready is True
+    assert probe.parse_response("Paper Jam").is_ready is False
+    assert probe.parse_response("Load Tray 1").is_ready is False
     print("   -> Thành công! Giải mã chính xác toàn bộ các trạng thái thiết bị.")
 
 

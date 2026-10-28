@@ -3,8 +3,10 @@ Module vận chuyển in ấn RAW Socket (RAW Socket Printing Transport) qua chu
 Che giấu toàn bộ chi tiết socket, timeout, graceful shutdown và cung cấp Seam kiểm thử in-memory.
 """
 
+import re
 import socket
 import logging
+import warnings
 from dataclasses import dataclass
 from typing import Optional, Protocol, Tuple, Union, runtime_checkable
 
@@ -24,12 +26,37 @@ class PrinterStatus:
 
     @classmethod
     def from_raw(cls, raw_status: str) -> "PrinterStatus":
-        """Phân tích chuỗi phản hồi thô từ lệnh trạng thái."""
-        import re
+        """
+        [DEPRECATED] Phân tích chuỗi phản hồi thô từ lệnh trạng thái.
+        Vui lòng sử dụng 'PJLStatusProbe().parse_response(raw)'.
+        """
+        warnings.warn(
+            "PrinterStatus.from_raw đã lỗi thời và sẽ bị loại bỏ trong phiên bản tương lai. "
+            "Vui lòng chuyển sang sử dụng 'PJLStatusProbe().parse_response'.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return PJLStatusProbe().parse_response(raw_status)
 
-        raw_text = raw_status.strip() if raw_status else ""
+
+@runtime_checkable
+class StatusProbe(Protocol):
+    """Giao thức thăm dò trạng thái phần cứng máy in."""
+    query_bytes: bytes
+
+    def parse_response(self, raw_response: str) -> PrinterStatus:
+        ...
+
+
+class PJLStatusProbe:
+    """Đầu dò trạng thái máy in laser chuẩn PJL (@PJL INFO STATUS)."""
+    query_bytes: bytes = b"\x1b%-12345X@PJL\r\n@PJL INFO STATUS\r\n\x1b%-12345X"
+
+    def parse_response(self, raw_response: str) -> PrinterStatus:
+        """Phân tích chuỗi phản hồi thô của lệnh @PJL INFO STATUS thành PrinterStatus."""
+        raw_text = raw_response.strip() if raw_response else ""
         if not raw_text:
-            return cls(is_online=False, is_ready=False, display="Unknown", raw="")
+            return PrinterStatus(is_online=False, is_ready=False, display="Unknown", raw="")
 
         code: Optional[int] = None
         code_match = re.search(r"\bCODE\s*=\s*(\d+)", raw_text, re.IGNORECASE)
@@ -88,30 +115,13 @@ class PrinterStatus:
         else:
             is_ready = True
 
-        return cls(
+        return PrinterStatus(
             is_online=is_online,
             is_ready=is_ready,
             display=display,
             code=code,
-            raw=raw_status,
+            raw=raw_response,
         )
-
-
-@runtime_checkable
-class StatusProbe(Protocol):
-    """Giao thức thăm dò trạng thái phần cứng máy in."""
-    query_bytes: bytes
-
-    def parse_response(self, raw_response: str) -> PrinterStatus:
-        ...
-
-
-class PJLStatusProbe:
-    """Đầu dò trạng thái máy in laser chuẩn PJL (@PJL INFO STATUS)."""
-    query_bytes: bytes = b"\x1b%-12345X@PJL\r\n@PJL INFO STATUS\r\n\x1b%-12345X"
-
-    def parse_response(self, raw_response: str) -> PrinterStatus:
-        return PrinterStatus.from_raw(raw_response)
 
 
 @runtime_checkable

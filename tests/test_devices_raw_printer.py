@@ -100,3 +100,66 @@ def test_deprecated_tspl_network_printer_compatibility():
     assert success is True
     assert len(transport.sent_payloads) == 1
     assert transport.sent_payloads[0] == b"CLS\r\nPRINT 1\r\n"
+
+
+# Các ca giải mã PJL chuyển từ script ví dụ examples/test_printer_pcl.py
+@pytest.mark.parametrize(
+    "raw, is_online, is_ready, display, code",
+    [
+        ('@PJL INFO STATUS\r\nCODE=10001\r\nDISPLAY="00 READY"\r\nONLINE=TRUE\r\n\x0c', True, True, "00 READY", 10001),
+        ('@PJL INFO STATUS\r\nCODE=11003\r\nDISPLAY="Paper Jam"\r\nONLINE=TRUE\r\n\x0c', True, False, "Paper Jam", 11003),
+        ('@PJL INFO STATUS\r\nCODE=11004\r\nDISPLAY="Load Tray 1"\r\nONLINE=TRUE\r\n\x0c', True, False, "Load Tray 1", 11004),
+        ('@PJL INFO STATUS\r\nCODE=10002\r\nDISPLAY="Door Open"\r\nONLINE=FALSE\r\n\x0c', False, False, "Door Open", 10002),
+    ],
+    ids=["ready", "paper_jam", "load_tray", "door_open"],
+)
+def test_pjl_probe_parses_status_response(raw, is_online, is_ready, display, code):
+    status = PJLStatusProbe().parse_response(raw)
+
+    assert status.is_online is is_online
+    assert status.is_ready is is_ready
+    assert status.display == display
+    assert status.code == code
+    assert status.raw == raw
+
+
+@pytest.mark.parametrize(
+    "raw, is_ready",
+    [("Ready", True), ("Paper Jam", False), ("Load Tray 1", False)],
+)
+def test_pjl_probe_parses_plain_text_response(raw, is_ready):
+    assert PJLStatusProbe().parse_response(raw).is_ready is is_ready
+
+
+def test_pjl_probe_empty_response_is_unknown():
+    status = PJLStatusProbe().parse_response("")
+
+    assert status.is_online is False
+    assert status.is_ready is False
+    assert status.display == "Unknown"
+
+
+def test_printer_status_from_raw_is_deprecated_alias_of_probe():
+    raw = '@PJL INFO STATUS\r\nCODE=11003\r\nDISPLAY="Paper Jam"\r\nONLINE=TRUE\r\n\x0c'
+
+    with pytest.warns(DeprecationWarning):
+        status = PrinterStatus.from_raw(raw)
+
+    assert status == PJLStatusProbe().parse_response(raw)
+
+
+def test_get_status_does_not_emit_deprecation_warning():
+    simulated_pjl = '@PJL INFO STATUS\r\nCODE=10001\r\nDISPLAY="00 READY"\r\nONLINE=TRUE\r\n\x0c'
+    printer = RawSocketPrinter(host="192.168.1.107", transport=FakeSocketTransport(simulated_query_response=simulated_pjl))
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", DeprecationWarning)
+        status = printer.get_status()
+
+    assert status.is_ready is True
+
+
+def test_printer_status_import_from_pcl_module_still_resolves():
+    from core_kit.devices.printer_pcl import PrinterStatus as PclPrinterStatus
+
+    assert PclPrinterStatus is PrinterStatus

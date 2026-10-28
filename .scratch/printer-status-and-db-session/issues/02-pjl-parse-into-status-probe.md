@@ -4,11 +4,11 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] Parse logic moved verbatim into `PJLStatusProbe.parse_response`
-- [ ] `PrinterStatus.from_raw` emits `DeprecationWarning` and returns the probe's result
-- [ ] Duplicate `PrinterStatus` removed from the PCL module; `from core_kit.devices.printer_pcl import PrinterStatus` still resolves
-- [ ] Unused `socket` imports removed from PCL and TSPL modules
-- [ ] Pytest cases ported from the PCL example script: Ready, Paper Jam, Load Tray, Door Open (via `parse_response`)
-- [ ] Full test suite green
+- [x] Parse logic moved verbatim into `PJLStatusProbe.parse_response`
+- [x] `PrinterStatus.from_raw` emits `DeprecationWarning` and returns the probe's result
+- [x] Duplicate `PrinterStatus` removed from the PCL module; `from core_kit.devices.printer_pcl import PrinterStatus` still resolves
+- [x] Unused `socket` imports removed from PCL and TSPL modules
+- [x] Pytest cases ported from the PCL example script: Ready, Paper Jam, Load Tray, Door Open (via `parse_response`)
+- [x] Full test suite green
