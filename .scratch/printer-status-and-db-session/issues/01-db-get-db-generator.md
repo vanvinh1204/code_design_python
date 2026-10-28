@@ -4,11 +4,11 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] `get_db()` returns a plain generator yielding a `Session`
-- [ ] `session()` / `session_scope()` share the same internal generator via `contextmanager`
-- [ ] Test: drive `get_db()` with `next()` + `close()` — row committed
-- [ ] Test: drive `get_db()` with `throw()` — row rolled back, exception propagates
-- [ ] Docstring recommends `Depends(db.get_db)` for FastAPI
-- [ ] Full test suite green
+- [x] `get_db()` returns a plain generator yielding a `Session`
+- [x] `session()` / `session_scope()` share the same internal generator via `contextmanager`
+- [x] Test: drive `get_db()` with `next()` + a second `next()` (StopIteration, as FastAPI does) — row committed (note: `close()` raises GeneratorExit at the yield and would skip the commit)
+- [x] Test: drive `get_db()` with `throw()` — row rolled back, exception propagates
+- [x] Docstring recommends `Depends(db.get_db)` for FastAPI
+- [x] Full test suite green
