@@ -3,6 +3,7 @@ from core_kit.devices.printer_tspl import TSPLBuilder, TSPLNetworkPrinter
 from core_kit.devices.serial_port import SerialScannerReader
 from core_kit.devices.printer_raw import (
     PrinterStatus,
+    PrinterConnectionError,
     RawSocketPrinter,
     PJLStatusProbe,
     StatusProbe,
@@ -19,6 +20,7 @@ __all__ = [
     "TcpSocketAdapter",
     "FakeSocketTransport",
     "PrinterStatus",
+    "PrinterConnectionError",
     "PCL5RasterBuilder",
     "PCLNetworkPrinter",
     "TSPLBuilder",

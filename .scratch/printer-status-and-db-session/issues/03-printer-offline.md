@@ -4,13 +4,13 @@
 
 **Blocked by:** 02
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] `PrinterConnectionError` defined and exported from `core_kit.devices`
-- [ ] `TcpSocketAdapter.query` raises `PrinterConnectionError` (chained) instead of returning an error string
-- [ ] `FakeSocketTransport(should_fail=True).query` raises `PrinterConnectionError`
-- [ ] `PrinterStatus.offline(reason)` classmethod
-- [ ] `get_status()` catches the error and returns the offline status
-- [ ] Test: offline status from a failing fake
-- [ ] Test: `send(verify_ready=True)` transmits nothing when offline
-- [ ] Full test suite green
+- [x] `PrinterConnectionError` defined and exported from `core_kit.devices`
+- [x] `TcpSocketAdapter.query` raises `PrinterConnectionError` (chained) instead of returning an error string
+- [x] `FakeSocketTransport(should_fail=True).query` raises `PrinterConnectionError`
+- [x] `PrinterStatus.offline(reason)` classmethod
+- [x] `get_status()` catches the error and returns the offline status
+- [x] Test: offline status from a failing fake
+- [x] Test: `send(verify_ready=True)` transmits nothing when offline
+- [x] Full test suite green

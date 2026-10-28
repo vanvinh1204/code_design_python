@@ -501,6 +501,7 @@ def main():
 
     if not status.is_online:
         print(f"\n[!] CẢNH BÁO: Không thể kết nối tới máy in {config['host']}:{config['port']}.")
+        print(f"    Lý do: {status.display}")
         print("    Vui lòng kiểm tra lại cáp mạng LAN, nguồn máy in hoặc địa chỉ IP.")
         print(f"    (Gợi ý: bạn có thể chạy với cờ --dry-run để kiểm tra cục bộ không cần mạng).")
         return

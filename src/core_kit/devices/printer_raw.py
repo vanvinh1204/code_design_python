@@ -13,6 +13,13 @@ from typing import Optional, Protocol, Tuple, Union, runtime_checkable
 logger = logging.getLogger(__name__)
 
 
+class PrinterConnectionError(Exception):
+    """
+    Lỗi không thiết lập được kết nối hoặc truy vấn tới máy in (timeout, bị từ chối kết nối...).
+    Transport ném lỗi này thay vì trả về chuỗi lỗi để không bị nhầm là phản hồi của máy in.
+    """
+
+
 @dataclass
 class PrinterStatus:
     """
@@ -23,6 +30,11 @@ class PrinterStatus:
     display: str = ""
     code: Optional[int] = None
     raw: str = ""
+
+    @classmethod
+    def offline(cls, reason: str) -> "PrinterStatus":
+        """Tạo trạng thái Printer Offline: không kết nối được máy in, lý do nằm trong display."""
+        return cls(is_online=False, is_ready=False, display=reason)
 
     @classmethod
     def from_raw(cls, raw_status: str) -> "PrinterStatus":
@@ -131,6 +143,7 @@ class SocketTransport(Protocol):
         ...
 
     def query(self, host: str, port: int, query_payload: bytes, timeout: float) -> str:
+        """Gửi lệnh truy vấn và trả về phản hồi đã giải mã; ném PrinterConnectionError nếu không kết nối được."""
         ...
 
 
@@ -169,7 +182,7 @@ class TcpSocketAdapter:
             return b"".join(response_chunks).decode("latin1", errors="replace")
         except Exception as exc:
             logger.warning(f"[SOCKET_WARN] Truy vấn trạng thái {host}:{port} thất bại: {exc}")
-            return f"Connection Error: {exc}"
+            raise PrinterConnectionError(f"Không kết nối được máy in {host}:{port}: {exc}") from exc
 
 
 class FakeSocketTransport:
@@ -193,7 +206,7 @@ class FakeSocketTransport:
 
     def query(self, host: str, port: int, query_payload: bytes, timeout: float) -> str:
         if self.should_fail:
-            return "Simulated Failure"
+            raise PrinterConnectionError(f"Không kết nối được máy in {host}:{port}: Simulated Failure")
         self.last_destination = (host, port)
         return self.simulated_query_response
 
@@ -247,7 +260,13 @@ class RawSocketPrinter:
         return self.transport.send(self.host, self.port, payload_bytes, self.timeout)
 
     def get_status(self, probe: Optional[StatusProbe] = None) -> PrinterStatus:
-        """Truy vấn trạng thái thiết bị máy in qua đầu dò chỉ định."""
+        """
+        Truy vấn trạng thái thiết bị máy in qua đầu dò chỉ định.
+        Không bao giờ ném lỗi khi mất kết nối: trả về trạng thái Printer Offline kèm lý do.
+        """
         active_probe = probe if probe is not None else PJLStatusProbe()
-        raw_response = self.transport.query(self.host, self.port, active_probe.query_bytes, self.timeout)
+        try:
+            raw_response = self.transport.query(self.host, self.port, active_probe.query_bytes, self.timeout)
+        except PrinterConnectionError as exc:
+            return PrinterStatus.offline(str(exc))
         return active_probe.parse_response(raw_response)

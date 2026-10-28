@@ -163,3 +163,31 @@ def test_printer_status_import_from_pcl_module_still_resolves():
     from core_kit.devices.printer_pcl import PrinterStatus as PclPrinterStatus
 
     assert PclPrinterStatus is PrinterStatus
+
+
+def test_get_status_reports_printer_offline_when_unreachable():
+    printer = RawSocketPrinter(host="192.168.1.108", transport=FakeSocketTransport(should_fail=True))
+
+    # Không kết nối được máy in: get_status() không ném lỗi mà trả về trạng thái Printer Offline
+    status = printer.get_status()
+
+    assert status.is_online is False
+    assert status.is_ready is False
+    assert status.display != ""
+
+
+def test_send_verify_ready_transmits_nothing_when_printer_offline():
+    transport = FakeSocketTransport(should_fail=True)
+    printer = RawSocketPrinter(host="192.168.1.109", transport=transport)
+
+    success = printer.send(b"IMPORTANT_LABEL", verify_ready=True)
+
+    assert success is False
+    assert len(transport.sent_payloads) == 0
+
+
+def test_printer_connection_error_exported_from_devices_package():
+    from core_kit.devices import PrinterConnectionError
+
+    with pytest.raises(PrinterConnectionError):
+        FakeSocketTransport(should_fail=True).query("192.168.1.110", 9100, b"", 1.0)
