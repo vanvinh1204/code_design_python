@@ -177,7 +177,8 @@ def test_get_status_reports_printer_offline_when_unreachable():
 
 
 def test_send_verify_ready_transmits_nothing_when_printer_offline():
-    transport = FakeSocketTransport(should_fail=True)
+    # Chỉ query thất bại, send vẫn thành công: nếu send() bỏ qua verify_ready thì payload sẽ được gửi đi
+    transport = FakeSocketTransport(query_fails=True)
     printer = RawSocketPrinter(host="192.168.1.109", transport=transport)
 
     success = printer.send(b"IMPORTANT_LABEL", verify_ready=True)
@@ -191,3 +192,13 @@ def test_printer_connection_error_exported_from_devices_package():
 
     with pytest.raises(PrinterConnectionError):
         FakeSocketTransport(should_fail=True).query("192.168.1.110", 9100, b"", 1.0)
+
+
+def test_get_status_passes_probe_terminators_to_transport():
+    transport = FakeSocketTransport(simulated_query_response='DISPLAY="00 READY"\r\n')
+    printer = RawSocketPrinter(host="192.168.1.111", transport=transport)
+
+    # Dấu kết thúc phản hồi do đầu dò khai báo, transport không tự biết byte PJL
+    printer.get_status(probe=PJLStatusProbe())
+
+    assert transport.received_terminators == (b"\x0c", b"\x1b%-12345X")

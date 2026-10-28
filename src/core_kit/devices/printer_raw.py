@@ -55,6 +55,8 @@ class PrinterStatus:
 class StatusProbe(Protocol):
     """Giao thức thăm dò trạng thái phần cứng máy in."""
     query_bytes: bytes
+    # Dấu kết thúc phản hồi: transport ngừng đọc khi gặp bất kỳ chuỗi byte nào trong đây
+    terminators: tuple[bytes, ...]
 
     def parse_response(self, raw_response: str) -> PrinterStatus:
         ...
@@ -63,6 +65,8 @@ class StatusProbe(Protocol):
 class PJLStatusProbe:
     """Đầu dò trạng thái máy in laser chuẩn PJL (@PJL INFO STATUS)."""
     query_bytes: bytes = b"\x1b%-12345X@PJL\r\n@PJL INFO STATUS\r\n\x1b%-12345X"
+    # Phản hồi PJL kết thúc bằng form feed hoặc chuỗi UEL
+    terminators: tuple[bytes, ...] = (b"\x0c", b"\x1b%-12345X")
 
     def parse_response(self, raw_response: str) -> PrinterStatus:
         """Phân tích chuỗi phản hồi thô của lệnh @PJL INFO STATUS thành PrinterStatus."""
@@ -142,8 +146,19 @@ class SocketTransport(Protocol):
     def send(self, host: str, port: int, payload: bytes, timeout: float) -> bool:
         ...
 
-    def query(self, host: str, port: int, query_payload: bytes, timeout: float) -> str:
-        """Gửi lệnh truy vấn và trả về phản hồi đã giải mã; ném PrinterConnectionError nếu không kết nối được."""
+    def query(
+        self,
+        host: str,
+        port: int,
+        query_payload: bytes,
+        timeout: float,
+        terminators: tuple[bytes, ...] = (),
+    ) -> str:
+        """
+        Gửi lệnh truy vấn và trả về phản hồi đã giải mã; ném PrinterConnectionError nếu không kết nối được.
+        Ngừng đọc khi gặp bất kỳ dấu kết thúc nào, khi kết nối đóng hoặc hết thời gian chờ.
+        terminators rỗng nghĩa là đọc tới khi kết nối đóng hoặc hết thời gian chờ.
+        """
         ...
 
 
@@ -163,7 +178,14 @@ class TcpSocketAdapter:
             logger.error(f"[SOCKET_ERROR] Không thể gửi dữ liệu tới {host}:{port}: {exc}")
             return False
 
-    def query(self, host: str, port: int, query_payload: bytes, timeout: float) -> str:
+    def query(
+        self,
+        host: str,
+        port: int,
+        query_payload: bytes,
+        timeout: float,
+        terminators: tuple[bytes, ...] = (),
+    ) -> str:
         response_chunks: list[bytes] = []
         try:
             with socket.create_connection((host, port), timeout=timeout) as sock:
@@ -175,7 +197,9 @@ class TcpSocketAdapter:
                         if not chunk:
                             break
                         response_chunks.append(chunk)
-                        if b"\x0c" in chunk or b"\x1b%-12345X" in chunk:
+                        # Dò trên toàn bộ dữ liệu đã nhận vì dấu kết thúc có thể bị cắt giữa hai chunk
+                        received = b"".join(response_chunks)
+                        if any(term in received for term in terminators if term):
                             break
                     except socket.timeout:
                         break
@@ -191,11 +215,21 @@ class FakeSocketTransport:
         self,
         should_fail: bool = False,
         simulated_query_response: str = "",
+        query_fails: bool = False,
     ):
+        """
+        Args:
+            should_fail: Giả lập mất kết nối hoàn toàn: cả send lẫn query đều thất bại.
+            simulated_query_response: Phản hồi thô trả về cho query.
+            query_fails: Chỉ query thất bại (send vẫn thành công), để phân biệt
+                lệnh in bị hủy chủ động với lệnh in gửi thất bại.
+        """
         self.should_fail = should_fail
+        self.query_fails = query_fails
         self.simulated_query_response = simulated_query_response
         self.sent_payloads: list[bytes] = []
         self.last_destination: Optional[Tuple[str, int]] = None
+        self.received_terminators: Optional[tuple[bytes, ...]] = None
 
     def send(self, host: str, port: int, payload: bytes, timeout: float) -> bool:
         if self.should_fail:
@@ -204,8 +238,16 @@ class FakeSocketTransport:
         self.sent_payloads.append(payload)
         return True
 
-    def query(self, host: str, port: int, query_payload: bytes, timeout: float) -> str:
-        if self.should_fail:
+    def query(
+        self,
+        host: str,
+        port: int,
+        query_payload: bytes,
+        timeout: float,
+        terminators: tuple[bytes, ...] = (),
+    ) -> str:
+        self.received_terminators = terminators
+        if self.should_fail or self.query_fails:
             raise PrinterConnectionError(f"Không kết nối được máy in {host}:{port}: Simulated Failure")
         self.last_destination = (host, port)
         return self.simulated_query_response
@@ -266,7 +308,13 @@ class RawSocketPrinter:
         """
         active_probe = probe if probe is not None else PJLStatusProbe()
         try:
-            raw_response = self.transport.query(self.host, self.port, active_probe.query_bytes, self.timeout)
+            raw_response = self.transport.query(
+                self.host,
+                self.port,
+                active_probe.query_bytes,
+                self.timeout,
+                terminators=active_probe.terminators,
+            )
         except PrinterConnectionError as exc:
             return PrinterStatus.offline(str(exc))
         return active_probe.parse_response(raw_response)

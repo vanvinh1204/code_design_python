@@ -4,11 +4,12 @@
 
 **Blocked by:** 02, 03 (03 also edits `SocketTransport.query`)
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] `StatusProbe` protocol includes `terminators: tuple[bytes, ...]`
-- [ ] `PJLStatusProbe.terminators` set; no PJL bytes remain in the transport adapters
-- [ ] `SocketTransport.query` accepts `terminators`; TCP adapter stops on any of them
-- [ ] `FakeSocketTransport` records the terminators it received
-- [ ] Test: probe terminators reach the transport via `get_status()`
-- [ ] Full test suite green
+- [x] `StatusProbe` protocol includes `terminators: tuple[bytes, ...]`
+- [x] `PJLStatusProbe.terminators` set; no PJL bytes remain in the transport adapters
+- [x] `SocketTransport.query` accepts `terminators`; TCP adapter stops on any of them
+- [x] `FakeSocketTransport` records the terminators it received
+- [x] Test: probe terminators reach the transport via `get_status()`
+- [x] `FakeSocketTransport(query_fails=True)` fails only `query`; test "send(verify_ready=True) transmits nothing when offline" uses it so it fails if `send()` ignores `verify_ready` (coordinator addendum, closes the ticket 03 gap)
+- [x] Full test suite green
