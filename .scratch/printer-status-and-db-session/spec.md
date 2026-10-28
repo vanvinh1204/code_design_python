@@ -80,3 +80,4 @@ After the `cb954fb` deepening refactor, two seams in `core_kit` still cause real
 - Originated from the architecture review of 2026-10-28 (candidates #1 and #2).
 - Glossary terms **Status Probe** and **Printer Offline** were added to `GLOSSARY.md`.
 - Follow `.agents/rules/python.md`; keep Vietnamese comments/docstrings style.
+- Custom `SocketTransport` implementations must accept the new `terminators` argument of `query()`; custom probes without a `terminators` attribute still work (treated as an empty tuple).

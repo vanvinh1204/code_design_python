@@ -173,7 +173,8 @@ def test_get_status_reports_printer_offline_when_unreachable():
 
     assert status.is_online is False
     assert status.is_ready is False
-    assert status.display != ""
+    # Lý do thất bại của transport phải hiển thị trong display
+    assert "Simulated Failure" in status.display
 
 
 def test_send_verify_ready_transmits_nothing_when_printer_offline():
@@ -201,4 +202,41 @@ def test_get_status_passes_probe_terminators_to_transport():
     # Dấu kết thúc phản hồi do đầu dò khai báo, transport không tự biết byte PJL
     printer.get_status(probe=PJLStatusProbe())
 
-    assert transport.received_terminators == (b"\x0c", b"\x1b%-12345X")
+    assert transport.received_terminators == PJLStatusProbe.terminators
+
+
+@pytest.mark.parametrize(
+    "raw, display",
+    [
+        ('@PJL INFO STATUS\r\nCODE=11003\r\nDISPLAY="Paper Jam"\r\nONLINE=TRUE\r\n\x0c', "Paper Jam"),
+        ('@PJL INFO STATUS\r\nCODE=10002\r\nDISPLAY="Door Open"\r\nONLINE=FALSE\r\n\x0c', "Door Open"),
+        ('@PJL INFO STATUS\r\nCODE=11004\r\nDISPLAY="Load Tray 1"\r\nONLINE=TRUE\r\n\x0c', "Load Tray 1"),
+    ],
+    ids=["paper_jam", "door_open", "load_tray"],
+)
+def test_get_status_reports_not_ready_for_printer_faults(raw, display):
+    printer = RawSocketPrinter(host="192.168.1.112", transport=FakeSocketTransport(simulated_query_response=raw))
+
+    status = printer.get_status()
+
+    assert status.is_ready is False
+    assert status.display == display
+
+
+class _MinimalCustomProbe:
+    """Đầu dò tự viết kiểu cũ: chỉ có query_bytes và parse_response, không khai báo terminators."""
+    query_bytes: bytes = b"STATUS?\r\n"
+
+    def parse_response(self, raw_response: str) -> PrinterStatus:
+        return PrinterStatus(is_online=True, is_ready=raw_response == "OK", display=raw_response)
+
+
+def test_get_status_accepts_custom_probe_without_terminators():
+    transport = FakeSocketTransport(simulated_query_response="OK")
+    printer = RawSocketPrinter(host="192.168.1.113", transport=transport)
+
+    # Đầu dò thiếu terminators không được gây AttributeError
+    status = printer.get_status(probe=_MinimalCustomProbe())
+
+    assert status.is_ready is True
+    assert transport.received_terminators == ()

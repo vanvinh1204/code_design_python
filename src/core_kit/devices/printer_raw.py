@@ -313,7 +313,8 @@ class RawSocketPrinter:
                 self.port,
                 active_probe.query_bytes,
                 self.timeout,
-                terminators=active_probe.terminators,
+                # Đầu dò tự viết không khai báo terminators vẫn dùng được (đọc tới khi đóng kết nối)
+                terminators=getattr(active_probe, "terminators", ()),
             )
         except PrinterConnectionError as exc:
             return PrinterStatus.offline(str(exc))
