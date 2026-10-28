@@ -61,7 +61,7 @@ After the `cb954fb` deepening refactor, two seams in `core_kit` still cause real
 ## Testing Decisions
 
 - Tests exercise public interfaces only; never assert on private attributes or socket internals.
-- **Database**: against in-memory SQLite. `with session()` / `session_scope()` commit and rollback; `get_db()` driven directly as a generator (`next()` to obtain the session, `close()` to commit, `throw()` to roll back) with no FastAPI install. Prior art: existing database manager tests.
+- **Database**: against in-memory SQLite. `with session()` / `session_scope()` commit and rollback; `get_db()` driven directly as a generator (`next()` to obtain the session, a second `next()` raising `StopIteration` to commit — as FastAPI does; `close()` raises `GeneratorExit` and skips the commit — `throw()` to roll back) with no FastAPI install. Prior art: existing database manager tests.
 - **Printer**: `RawSocketPrinter` with `FakeSocketTransport` — status for ready / jam / door open / load tray / offline; `send(verify_ready=True)` does not transmit when offline; probe terminators reach the transport. Prior art: existing raw printer tests.
 - **Probe**: `PJLStatusProbe.parse_response` with raw PJL strings ported from the PCL example script.
 - **Deprecation**: `PrinterStatus.from_raw` emits `DeprecationWarning` and returns the same result as the probe.
