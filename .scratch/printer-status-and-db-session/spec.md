@@ -1,7 +1,7 @@
 # Printer Status Probe Seam & Database Session Seam Specification
 
-Status: ready-for-agent
-Labels: ready-for-agent
+Status: resolved
+Labels: resolved
 
 ## Problem Statement
 
