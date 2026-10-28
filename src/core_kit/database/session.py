@@ -56,17 +56,10 @@ class DatabaseManager:
             ini_path=ini_path,
         )
 
-    @contextmanager
-    def session(self) -> Generator[Session, None, None]:
+    def _session_generator(self) -> Generator[Session, None, None]:
         """
-        Seam quản lý phiên làm việc chuẩn duy nhất (Context Manager).
-        Tự động commit khi hoàn tất, rollback khi có lỗi và đóng session.
-        Hoạt động hoàn hảo cho cả:
-        - PySide6 / Background Workers:
-            with db_manager.session() as session:
-                items = session.query(Product).all()
-        - FastAPI Dependency Injection:
-            def my_endpoint(db: Session = Depends(db_manager.session)):
+        Generator nội bộ duy nhất nắm logic giao dịch:
+        commit khi hoàn tất, rollback và ném lại khi có lỗi, luôn đóng session.
         """
         sess: Session = self.session_factory()
         try:
@@ -78,10 +71,27 @@ class DatabaseManager:
         finally:
             sess.close()
 
+    @contextmanager
+    def session(self) -> Generator[Session, None, None]:
+        """
+        Context Manager cho PySide6 / Background Workers:
+            with db_manager.session() as session:
+                items = session.query(Product).all()
+        Tự động commit khi hoàn tất, rollback khi có lỗi và đóng session.
+        Với FastAPI, dùng Depends(db_manager.get_db) thay vì session().
+        """
+        yield from self._session_generator()
+
     def session_scope(self):
         """[Alias tương thích ngược] Chuyển tiếp tới context manager session()."""
         return self.session()
 
-    def get_db(self):
-        """[Alias tương thích ngược] Chuyển tiếp tới context manager session()."""
-        return self.session()
+    def get_db(self) -> Generator[Session, None, None]:
+        """
+        Generator thuần dùng cho FastAPI Dependency Injection:
+            def my_endpoint(db: Session = Depends(db_manager.get_db)):
+                ...
+        Commit khi endpoint thành công, rollback khi endpoint ném lỗi, luôn đóng session.
+        Không dùng get_db() trong khối with; hãy dùng db_manager.session().
+        """
+        return self._session_generator()

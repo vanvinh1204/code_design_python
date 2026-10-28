@@ -61,3 +61,30 @@ def test_database_manager_backward_compatibility_aliases(in_memory_db):
         saved = session.query(SampleProduct).filter_by(name="Sản phẩm Alias").first()
         assert saved is not None
         assert saved.name == "Sản phẩm Alias"
+
+
+def test_get_db_generator_commits_on_success(in_memory_db):
+    # Mô phỏng FastAPI Depends(): next() lấy session, kết thúc generator khi endpoint thành công
+    gen = in_memory_db.get_db()
+    session = next(gen)
+    session.add(SampleProduct(name="Sản phẩm DI", price=300))
+    with pytest.raises(StopIteration):
+        next(gen)
+
+    with in_memory_db.session() as session:
+        saved = session.query(SampleProduct).filter_by(name="Sản phẩm DI").first()
+        assert saved is not None
+        assert saved.price == 300
+
+
+def test_get_db_generator_rolls_back_and_reraises_on_error(in_memory_db):
+    # Mô phỏng FastAPI Depends(): endpoint ném lỗi -> lỗi được throw() vào generator
+    gen = in_memory_db.get_db()
+    session = next(gen)
+    session.add(SampleProduct(name="Sản phẩm DI Lỗi", price=900))
+    with pytest.raises(RuntimeError, match="Endpoint lỗi"):
+        gen.throw(RuntimeError("Endpoint lỗi"))
+
+    with in_memory_db.session() as session:
+        saved = session.query(SampleProduct).filter_by(name="Sản phẩm DI Lỗi").first()
+        assert saved is None
