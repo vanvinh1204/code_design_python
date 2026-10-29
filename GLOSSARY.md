@@ -8,6 +8,18 @@ Thư viện nền tảng module dùng chung cho các ứng dụng Web FastAPI v�
 Luồng dữ liệu đồ họa nhị phân (1-bit monochrome) đóng gói theo chuẩn Printer Command Language Level 5 để nạp trực tiếp vào bộ đệm điểm ảnh của máy in laser.
 _Avoid_: PostScript, GDI raster, bitmap dump
 
+**PCL XL**:
+Ngôn ngữ mô tả trang dạng nhị phân (PCL 6 Enhanced) gồm toán tử và thuộc tính có kiểu, dùng trong dự án để gửi ảnh raster 1-bit kèm kích thước trang khai báo tường minh.
+_Avoid_: PCL 6 (khi nói chung chung), PCL 5, PCLXL raster dump
+
+**CustomMediaSize**:
+Kích thước trang vật lý (rộng x cao, đơn vị mm) khai báo ngay trong lệnh bắt đầu trang của PCL XL, là cách khai báo khổ giấy duy nhất đã kiểm chứng đúng trên mọi Printer Family đang dùng.
+_Avoid_: Custom paper, khổ tùy chỉnh PJL, LCUSTOMPAPER, PAPERWIDTH
+
+**Printer Family**:
+Nhóm máy in có chung dòng firmware gốc (hiện có: Lexmark-family như ApeosPort Print 4020SD, Brother-family như ApeosPrint 4620 SDW), nhận diện qua `@PJL INFO ID` và cách đặt tên biến PJL; quyết định máy hiểu những biến PJL và tên khay nào.
+_Avoid_: Printer model, Brand, Vendor
+
 **PJL (Printer Job Language)**:
 Ngôn ngữ điều khiển tác vụ in dùng để cấu hình khay giấy, kích thước trang vật lý, chuyển đổi chế độ thông dịch và truy vấn trạng thái máy in mạng.
 _Avoid_: ESC/POS, TSPL header, Job Spool
