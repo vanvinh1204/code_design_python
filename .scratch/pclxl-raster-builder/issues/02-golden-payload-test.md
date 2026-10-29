@@ -6,7 +6,7 @@
 
 **Status:** ready-for-agent (operator confirms the print)
 
-- [ ] Deterministic geometric image helper (no fonts) used by the test and by the fixture generator
-- [ ] A small regeneration script/function for the fixture, documented in the test module docstring
-- [ ] Fixture committed; golden test passes
+- [x] Deterministic geometric image helper (no fonts) used by the test and by the fixture generator
+- [x] A small regeneration script/function for the fixture, documented in the test module docstring
+- [x] Fixture committed; golden test passes
 - [ ] Operator confirmed the fixture prints aligned (±2 mm) on 10.45.1.193
