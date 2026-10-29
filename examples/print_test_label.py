@@ -1,28 +1,33 @@
 """
 Kịch bản kiểm thử in thực nghiệm tem nhãn kiểm chuẩn (Calibration Label)
-gửi trực tiếp tới máy in laser qua mạng LAN (cổng 9100) theo chuẩn PJL + PCL 5 Raster 300 DPI.
+gửi trực tiếp tới máy in laser qua mạng LAN (cổng 9100) theo chuẩn PJL + PCL XL (PCL 6) Raster 300 DPI,
+dựng bằng PCLXLRasterBuilder (khổ giấy khai báo qua CustomMediaSize).
 
 Tuân thủ nghiêm ngặt quy tắc kiến trúc dự án:
 - KHÔNG sử dụng thư viện argparse.
 - Xử lý tham số bằng sys.argv thuần túy.
 - Tự động lưu ảnh xem trước (Preview) để kiểm tra giao diện trước khi in.
 - Hỗ trợ cờ --dry-run để chạy kiểm tra offline không cần cắm mạng.
+- Mặc định KHÔNG bù trừ: scale 1.0, dịch lề 0 mm, xoay 90°, không chọn khay
+  (chỉ gửi PJL MEDIASOURCE khi có --tray), để tờ kiểm chuẩn phản ánh căn lề thật của máy in.
 
 Cách sử dụng:
     # 1. Chạy thử nghiệm offline (chỉ xuất ảnh PNG xem trước và kiểm tra tạo lệnh PCL):
     python examples/print_test_label.py --dry-run
 
-    # 2. In thực tế tới máy in mặc định (10.45.1.191:9100, Khay 1, Khổ Custom 102x148 mm):
+    # 2. In thực tế tới máy in mặc định (DEFAULT_HOST:9100, khay mặc định của máy, Khổ Custom 102x148 mm):
     python examples/print_test_label.py
 
-    # 3. Ghi đè địa chỉ IP máy in khác:
-    python examples/print_test_label.py 10.45.1.200
+    # 3. Ghi đè địa chỉ IP máy in và chọn khay nạp (gửi nguyên văn qua PJL MEDIASOURCE):
+    python examples/print_test_label.py 10.45.1.193 --tray TRAY2
+    python examples/print_test_label.py 10.45.1.191 --tray TRAY1
 
     # 4. Xuất mã nhị phân PCL ra tệp để kiểm tra bằng trình xem file hex:
     python examples/print_test_label.py --save-pcl output_test.pcl
 
-    # 5. Tùy chỉnh tỉ lệ scale hoặc dịch lề mm:
+    # 5. Tùy chỉnh tỉ lệ scale (đồng nhất hoặc theo trục), dịch lề mm và góc xoay:
     python examples/print_test_label.py --scale 0.94 --shift-x 1.0 --shift-y -1.0
+    python examples/print_test_label.py --scale-x 0.98 --scale-y 1.0 --rotate 0
 """
 from __future__ import annotations
 
@@ -51,20 +56,18 @@ if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
 from PIL import Image, ImageDraw, ImageFont
-from core_kit.devices import PCL5RasterBuilder, PCLNetworkPrinter, PrinterStatus
+from core_kit.devices import PCLNetworkPrinter, PCLXLRasterBuilder
 
 # Cấu hình mặc định máy in
 DEFAULT_HOST = os.getenv("PRINTER_HOST", "10.45.1.193")
 DEFAULT_PORT = int(os.getenv("PRINTER_PORT", "9100"))
-DEFAULT_TRAY = "TRAY1"
+DEFAULT_TRAY: str | None = None  # Không chọn khay: chỉ gửi MEDIASOURCE khi có --tray
 DEFAULT_WIDTH_MM = 102.0
 DEFAULT_HEIGHT_MM = 148.0
-DEFAULT_SCALE_X = float(os.getenv("PRINT_SCALE_X", "0.89"))
-DEFAULT_SCALE_Y = float(os.getenv("PRINT_SCALE_Y", "0.94"))
-DEFAULT_SCALE = (DEFAULT_SCALE_X, DEFAULT_SCALE_Y)
+DEFAULT_SCALE = (1.0, 1.0)  # Không bù trừ tỉ lệ: tờ kiểm chuẩn phản ánh căn lề thật của máy in
 DEFAULT_ROTATE = 90
-DEFAULT_SHIFT_X_MM = float(os.getenv("PRINT_SHIFT_X", "-5.0"))
-DEFAULT_SHIFT_Y_MM = float(os.getenv("PRINT_SHIFT_Y", "0.0"))
+DEFAULT_SHIFT_X_MM = 0.0
+DEFAULT_SHIFT_Y_MM = 0.0
 
 
 def get_font(size: int = 16) -> ImageFont.ImageFont:
@@ -88,6 +91,7 @@ def create_calibration_label(
     target_ip: str = DEFAULT_HOST,
     scale_info: str | None = None,
     shift_info: str | None = None,
+    tray_info: str | None = None,
 ) -> Image.Image:
     """
     Tạo hình ảnh tem kiểm chuẩn kỹ thuật hoàn chỉnh (1-bit monochrome).
@@ -168,7 +172,7 @@ def create_calibration_label(
     title_box_top = 70
     draw.text(
         (80, title_box_top),
-        "CORE_KIT :: PCL 5 RASTER CALIBRATION TEST",
+        "CORE_KIT :: PCL XL RASTER CALIBRATION TEST",
         fill=0,
         font=font_large,
     )
@@ -184,16 +188,17 @@ def create_calibration_label(
     info_top = title_box_top + 100
     now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    effective_scale = scale_info or "X: 89% | Y: 94%"
-    effective_shift = shift_info or "Shift X: -5.0 mm | Shift Y: 0.0 mm"
+    effective_scale = scale_info or "X: 100% | Y: 100%"
+    effective_shift = shift_info or "Shift X: 0.0 mm | Shift Y: 0.0 mm"
+    effective_tray = tray_info or "Mặc định của máy in (không gửi MEDIASOURCE)"
 
     info_lines = [
         f"• Máy in đích: {target_ip}:9100",
         f"• Khổ tem giấy: {height_mm:.1f} mm (Rộng) x {width_mm:.1f} mm (Dài)",
-        f"• Khay nạp: TRAY 1 (Short-Edge Feed, Cạnh ngắn vào trước)",
+        f"• Khay nạp: {effective_tray}",
         f"• Độ phân giải: {dpi} DPI (1 dot = {25.4/dpi*1000:.1f} µm)",
         f"• Hướng xoay: 90° CW (ROTATE_270 trong bộ đệm)",
-        f"• Tỉ lệ Scale: {effective_scale} (Bảo toàn lề an toàn)",
+        f"• Tỉ lệ Scale: {effective_scale}",
         f"• Hiệu chỉnh lề: {effective_shift}",
         f"• Thời điểm in: {now_str}",
     ]
@@ -278,7 +283,7 @@ def create_calibration_label(
         draw.rectangle([(bar_x, bar_y), (bar_x + bar_w, bar_y + bar_h)], fill=0, outline=0)
         bar_x += bar_w + space_w
 
-    draw.text((bc_left + 80, bar_y + bar_h + 8), "* PCL5-TEST-YAZAKI-LABEL *", fill=0, font=font_medium)
+    draw.text((bc_left + 80, bar_y + bar_h + 8), "* PCLXL-TEST-YAZAKI-LABEL *", fill=0, font=font_medium)
 
     # 9. Mẫu mã ma trận 2D mô phỏng (Checkerboard Matrix Pattern)
     matrix_left = 820
@@ -324,7 +329,7 @@ def create_calibration_label(
 
     draw.text(
         (canvas_w - 450, canvas_h - 45),
-        "CORE_KIT DEVICES :: PCL5RasterBuilder",
+        "CORE_KIT DEVICES :: PCLXLRasterBuilder",
         fill=0,
         font=font_small,
     )
@@ -332,9 +337,10 @@ def create_calibration_label(
     return img
 
 
-def parse_simple_args() -> dict:
+def parse_simple_args(argv: list[str] | None = None) -> dict:
     """
     Phân tích tham số từ sys.argv thuần túy, TUÂN THỦ NGHIÊM NGẶT QUY TẮC KHÔNG DÙNG ARGPARSE.
+    `argv` mặc định là sys.argv[1:].
     """
     args = {
         "host": DEFAULT_HOST,
@@ -349,7 +355,8 @@ def parse_simple_args() -> dict:
         "preview_path": str(ROOT_DIR / "examples" / "preview_test_label.png"),
     }
 
-    argv = sys.argv[1:]
+    if argv is None:
+        argv = sys.argv[1:]
     i = 0
     while i < len(argv):
         arg = argv[i]
@@ -405,6 +412,29 @@ def parse_simple_args() -> dict:
     return args
 
 
+def build_payload(config: dict, image: Image.Image | None = None) -> bytes:
+    """Dựng luồng byte PJL + PCL XL cho tem kiểm chuẩn theo cấu hình đã phân tích."""
+    if image is None:
+        image = create_calibration_label(target_ip=config["host"])
+    builder = PCLXLRasterBuilder(
+        paper_size="CUSTOM",
+        width_mm=DEFAULT_WIDTH_MM,
+        height_mm=DEFAULT_HEIGHT_MM,
+        tray=config["tray"],
+        dpi=300,
+        job_name="PCLXL_CALIBRATION_TEST",
+    )
+    builder.add_page(
+        image=image,
+        rotate=config["rotate"],
+        scale=config["scale"],
+        shift_x_mm=config["shift_x"],
+        shift_y_mm=config["shift_y"],
+        auto_center=True,
+    )
+    return builder.build()
+
+
 def main():
     config = parse_simple_args()
 
@@ -415,8 +445,9 @@ def main():
     )
 
     print("=" * 65)
-    print("  KỊCH BẢN KIỂM THỬ IN THỰC TẾ: CORE_KIT PCL 5 RASTER")
-    print(f"  Mục tiêu: {config['host']}:{config['port']} | Khay nạp: {config['tray']}")
+    tray_label = config["tray"] or "mặc định của máy in"
+    print("  KỊCH BẢN KIỂM THỬ IN THỰC TẾ: CORE_KIT PCL XL RASTER")
+    print(f"  Mục tiêu: {config['host']}:{config['port']} | Khay nạp: {tray_label}")
     print(f"  Khổ Custom: {DEFAULT_WIDTH_MM} x {DEFAULT_HEIGHT_MM} mm | Xoay: {config['rotate']}° | Scale: {scale_info}")
     print(f"  Dịch lề: Shift X = {config['shift_x']:.1f} mm | Shift Y = {config['shift_y']:.1f} mm")
     print("=" * 65)
@@ -432,6 +463,7 @@ def main():
         target_ip=config["host"],
         scale_info=scale_info,
         shift_info=shift_info,
+        tray_info=config["tray"] and f"{config['tray']} (PJL MEDIASOURCE)",
     )
     draw_time = (time.time() - t0) * 1000
     print(f"      -> Vẽ thành công canvas {test_img.width}x{test_img.height} px trong {draw_time:.1f}ms.")
@@ -442,29 +474,10 @@ def main():
     test_img.save(preview_file)
     print(f"      -> Đã xuất tệp ảnh xem trước: {preview_file.resolve()}")
 
-    # 3. Dựng lệnh in PCL 5 Raster bằng PCL5RasterBuilder
-    print("\n[2/4] Đang đóng gói PCL 5 Raster bằng PCL5RasterBuilder...")
+    # 3. Dựng lệnh in PCL XL Raster bằng PCLXLRasterBuilder
+    print("\n[2/4] Đang đóng gói PCL XL Raster bằng PCLXLRasterBuilder...")
     t1 = time.time()
-    builder = PCL5RasterBuilder(
-        paper_size="CUSTOM",
-        width_mm=DEFAULT_WIDTH_MM,
-        height_mm=DEFAULT_HEIGHT_MM,
-        tray=config["tray"],
-        feed_direction="SHORTEDGEFEED",
-        dpi=300,
-        job_name="PCL_CALIBRATION_TEST",
-    )
-
-    builder.add_page(
-        image=test_img,
-        rotate=config["rotate"],
-        scale=config["scale"],
-        shift_x_mm=config["shift_x"],
-        shift_y_mm=config["shift_y"],
-        auto_center=True,
-    )
-
-    payload = builder.build()
+    payload = build_payload(config, test_img)
     build_time = (time.time() - t1) * 1000
     print(f"      -> Sinh payload hoàn tất: {len(payload)} bytes ({len(payload)/1024:.1f} KB) trong {build_time:.1f}ms.")
 
@@ -510,7 +523,7 @@ def main():
         print(f"\n[!] CẢNH BÁO: Máy in đang báo trạng thái không sẵn sàng: \"{status.display}\".")
         print("    Vui lòng kiểm tra khay giấy, nắp máy in hoặc xử lý kẹt giấy trước khi in.")
 
-    # Tiến hành gửi luồng byte PCL 5
+    # Tiến hành gửi luồng byte PJL + PCL XL
     print(f"\n[4/4] Đang gửi luồng lệnh in ({len(payload)} bytes) qua TCP Socket...")
     t2 = time.time()
     send_success = printer.send(payload, verify_ready=False)
@@ -518,7 +531,7 @@ def main():
 
     if send_success:
         print(f"      -> Gửi dữ liệu thành công trong {send_time:.1f}ms!")
-        print("      -> Máy in đang tiếp nhận và kéo giấy từ Khay 1...")
+        print(f"      -> Máy in đang tiếp nhận và kéo giấy từ khay: {tray_label}...")
         print("\n" + "=" * 65)
         print("-> HOÀN TẤT LỆNH IN THỬ NGHIỆM THÀNH CÔNG!")
         print(f"   Hãy kiểm tra tờ tem in ra tại Khay nạp của máy in ApeosPort {config['host']}.")
