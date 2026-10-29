@@ -347,7 +347,13 @@ class PCLXLRasterBuilder:
             shift_y_mm: Dịch dọc theo mm (dương = xuống dưới).
             auto_center: Căn giữa ảnh trên khổ giấy trước khi áp dụng shift.
         """
-        from PIL import Image
+        try:
+            from PIL import Image
+        except ImportError:
+            raise ImportError(
+                "Thư viện 'pillow' chưa được cài đặt. Vui lòng cài đặt qua 'pip install pillow>=10.0.0' "
+                "hoặc 'pip install core_kit[devices]'."
+            )
 
         if rotate not in (0, 90, 180, 270):
             raise ValueError(f"Góc xoay không hợp lệ: {rotate}. Chỉ hỗ trợ các góc 0, 90, 180, 270 độ.")

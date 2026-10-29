@@ -229,3 +229,11 @@ def test_any_pillow_mode_is_converted_to_one_bit(content):
 def test_build_without_pages_raises_value_error():
     with pytest.raises(ValueError):
         _label_builder().build()
+
+
+def test_missing_pillow_raises_import_error_with_install_hint(monkeypatch):
+    builder = _label_builder()
+    monkeypatch.setitem(__import__("sys").modules, "PIL", None)
+
+    with pytest.raises(ImportError, match=r"pip install core_kit\[devices\]"):
+        builder.add_page(object())
