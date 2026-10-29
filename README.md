@@ -95,7 +95,7 @@ printer = TSPLNetworkPrinter(host="192.168.1.200", port=9100)
 printer.send_raw(tspl_commands)
 ```
 
-#### 2.3.2. Máy in laser mạng PCL XL (PCL 6) Raster & PJL (Lexmark, Brother, HP, Fujifilm...)
+#### 2.3.2. Máy in laser mạng PCL XL (PCL 6) Raster & PJL (Printer Family Lexmark, Brother — đã kiểm chứng)
 Hỗ trợ in trực tiếp qua RAW TCP Socket (cổng 9100) không cần driver hệ điều hành. Khổ giấy (kể cả khổ tem tùy chỉnh) luôn được khai báo qua `CustomMediaSize` của PCL XL, nên không phụ thuộc cấu hình khổ giấy của khay trên máy in:
 ```python
 from PIL import Image
