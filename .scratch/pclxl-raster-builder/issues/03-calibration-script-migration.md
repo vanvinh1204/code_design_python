@@ -6,7 +6,7 @@
 
 **Status:** ready-for-agent (operator confirms the prints)
 
-- [ ] `--dry-run` produces the preview and a PCL XL payload
-- [ ] No environment-based compensation defaults remain
+- [x] `--dry-run` produces the preview and a PCL XL payload
+- [x] No environment-based compensation defaults remain
 - [ ] Operator confirmed: `10.45.1.193 --tray TRAY2` border within ±2 mm of paper edge
 - [ ] Operator confirmed: `10.45.1.191 --tray TRAY1` border within ±2 mm of paper edge
