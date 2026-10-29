@@ -4,7 +4,7 @@
 
 **Blocked by:** 01
 
-**Status:** ready-for-agent (operator confirms the prints)
+**Status:** awaiting operator hardware confirmation (code merged)
 
 - [x] `--dry-run` produces the preview and a PCL XL payload
 - [x] No environment-based compensation defaults remain

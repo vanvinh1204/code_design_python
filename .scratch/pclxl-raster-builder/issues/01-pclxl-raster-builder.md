@@ -4,7 +4,7 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [x] PJL header: job name, `@PJL SET MEDIASOURCE = <tray>` only when `tray` is given (verbatim), `@PJL ENTER LANGUAGE = PCLXL`; no paper-size/feed/duplex variables; UEL/EOJ footer
 - [x] PCL XL stream: `) HP-PCL XL;2;0` header, BeginSession/OpenDataSource/.../CloseDataSource/EndSession as in the spec

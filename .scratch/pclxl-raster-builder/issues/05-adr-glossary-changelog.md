@@ -4,7 +4,7 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [x] ADR-0003 written; ADR-0002 marked superseded
 - [x] Three glossary entries added with `_Avoid_` lines

@@ -4,7 +4,7 @@
 
 **Blocked by:** 01
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [x] Test: constructing `PCL5RasterBuilder` warns `DeprecationWarning`
 - [x] Existing `PCL5RasterBuilder` tests still pass (warnings handled, not suppressed globally)

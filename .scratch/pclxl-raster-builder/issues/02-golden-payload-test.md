@@ -4,7 +4,7 @@
 
 **Blocked by:** 01
 
-**Status:** ready-for-agent (operator confirms the print)
+**Status:** awaiting operator hardware confirmation (code merged)
 
 - [x] Deterministic geometric image helper (no fonts) used by the test and by the fixture generator
 - [x] A small regeneration script/function for the fixture, documented in the test module docstring
