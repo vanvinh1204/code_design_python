@@ -95,33 +95,27 @@ printer = TSPLNetworkPrinter(host="192.168.1.200", port=9100)
 printer.send_raw(tspl_commands)
 ```
 
-#### 2.3.2. Máy in laser mạng PCL 5 Raster & PJL (Fujifilm ApeosPort, HP, Canon, Ricoh)
-Hỗ trợ in trực tiếp qua RAW TCP Socket (cổng 9100) không cần driver hệ điều hành, bù trừ lề chết cơ khí và hỗ trợ khổ tem tùy chỉnh (Short-Edge Feed):
+#### 2.3.2. Máy in laser mạng PCL XL (PCL 6) Raster & PJL (Lexmark, Brother, HP, Fujifilm...)
+Hỗ trợ in trực tiếp qua RAW TCP Socket (cổng 9100) không cần driver hệ điều hành. Khổ giấy (kể cả khổ tem tùy chỉnh) luôn được khai báo qua `CustomMediaSize` của PCL XL, nên không phụ thuộc cấu hình khổ giấy của khay trên máy in:
 ```python
 from PIL import Image
-from core_kit.devices import PCL5RasterBuilder, PCLNetworkPrinter
+from core_kit.devices import PCLXLRasterBuilder, PCLNetworkPrinter
 
-# 1. Khởi tạo builder cho khổ tem decal 102 x 148 mm từ Khay 1 (Short-Edge Feed)
-builder = PCL5RasterBuilder(
+# 1. Khởi tạo builder cho khổ tem decal 102 x 148 mm.
+#    tray là tên MEDIASOURCE PJL của chính máy in (vd. 4620 SDW: "TRAY2", 4020SD: "TRAY1");
+#    bỏ trống (None) để máy in dùng khay mặc định.
+builder = PCLXLRasterBuilder(
     paper_size="CUSTOM",
     width_mm=102.0,
     height_mm=148.0,
-    tray="TRAY1",
-    feed_direction="SHORTEDGEFEED",
+    tray="TRAY2",
     dpi=300,
     job_name="SHIPPING_LABEL",
 )
 
-# 2. Thêm trang in: tự động xoay, co giãn bảo toàn lề cơ khí và bù lề PCL 5
+# 2. Thêm trang in: xoay, căn giữa; scale/shift chỉ dùng khi cần tinh chỉnh theo máy in
 label_image = Image.open("label_artwork.png")
-builder.add_page(
-    image=label_image,
-    rotate=90,
-    scale=(0.89, 0.94),
-    shift_x_mm=-5.0,
-    shift_y_mm=0.0,
-    auto_center=True,
-)
+builder.add_page(image=label_image, rotate=90, auto_center=True)
 payload = builder.build()
 
 # 3. Kết nối máy in qua mạng, kiểm tra trạng thái phần cứng và gửi lệnh
@@ -134,7 +128,7 @@ print(f"Trạng thái LCD: {status.display} | Sẵn sàng: {status.is_ready}")
 if status.is_ready:
     success = printer.send(payload, verify_ready=True)
     if success:
-        print("Đã gửi lệnh in laser PCL 5 thành công!")
+        print("Đã gửi lệnh in laser PCL XL thành công!")
 else:
     print(f"Không thể in vì máy in đang báo: {status.display}")
 ```

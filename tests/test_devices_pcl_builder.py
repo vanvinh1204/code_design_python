@@ -4,6 +4,10 @@ from PIL import Image
 import pytest
 from core_kit.devices import PCL5RasterBuilder
 
+# PCL5RasterBuilder đã lỗi thời; các ca hồi quy hành vi bên dưới bỏ qua cảnh báo chỉ trong module này.
+# Ca kiểm thử cảnh báo dùng pytest.warns nên vẫn bắt được DeprecationWarning.
+pytestmark = pytest.mark.filterwarnings("ignore:PCL5RasterBuilder:DeprecationWarning")
+
 
 def test_pcl_builder_custom_label():
     builder = PCL5RasterBuilder(
@@ -83,3 +87,11 @@ def test_pcl_builder_bitwise_inversion_and_padding():
     assert b"\x1b*b2W\xff\x00" in payload
     # Dòng thứ hai: toàn bộ trắng -> b"\x00\x00"
     assert b"\x1b*b2W\x00\x00" in payload
+
+
+def test_constructing_pcl5_builder_warns_deprecated_in_favour_of_pclxl():
+    with pytest.warns(DeprecationWarning, match="PCLXLRasterBuilder") as record:
+        PCL5RasterBuilder(paper_size="A4")
+
+    # stacklevel trỏ về nơi gọi, không phải bên trong printer_pcl.py
+    assert record[0].filename == __file__

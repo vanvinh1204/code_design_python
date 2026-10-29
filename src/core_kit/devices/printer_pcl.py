@@ -5,6 +5,7 @@ Cung cấp khả năng in trực tiếp qua RAW TCP Socket (cổng 9100) mà kh�
 
 import io
 import struct
+import warnings
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple, Union
 
@@ -14,6 +15,11 @@ class PCL5RasterBuilder:
     Trình dựng lệnh và đồ họa raster PCL 5 kèm header/footer PJL.
     Hỗ trợ cả kích thước trang tiêu chuẩn (A4, Letter) và kích thước tùy chỉnh (Custom mm).
     Tự động chuẩn hóa ảnh (xoay, co giãn tránh lề cơ khí, căn giữa, dịch chuyển mm).
+
+    .. deprecated::
+        Dùng `PCLXLRasterBuilder` thay thế. PCL 5 không khai báo được khổ giấy tùy chỉnh
+        trên firmware Printer Family Brother (khổ CUSTOM bị bỏ qua), trong khi PCL XL
+        khai báo qua `CustomMediaSize` hoạt động trên cả Lexmark và Brother.
     """
 
     STANDARD_PAPER_SIZES: dict[str, tuple[float, float]] = {
@@ -34,6 +40,12 @@ class PCL5RasterBuilder:
         dpi: int = 300,
         job_name: str = "PCL_PRINT_JOB",
     ):
+        warnings.warn(
+            "PCL5RasterBuilder đã lỗi thời (không khai báo được khổ tùy chỉnh trên firmware "
+            "Brother); hãy dùng PCLXLRasterBuilder.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         self.paper_size = paper_size.upper()
         self.tray = tray.upper() if tray else "TRAY1"
         self.feed_direction = feed_direction.upper() if feed_direction else ""
@@ -446,7 +458,6 @@ from core_kit.devices.printer_raw import (
     PJLStatusProbe,
     SocketTransport,
 )
-import warnings
 
 
 class PCLNetworkPrinter(RawSocketPrinter):
