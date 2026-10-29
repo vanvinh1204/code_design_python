@@ -6,6 +6,6 @@
 
 **Status:** ready-for-agent
 
-- [ ] ADR-0003 written; ADR-0002 marked superseded
-- [ ] Three glossary entries added with `_Avoid_` lines
-- [ ] CHANGELOG Unreleased section added
+- [x] ADR-0003 written; ADR-0002 marked superseded
+- [x] Three glossary entries added with `_Avoid_` lines
+- [x] CHANGELOG Unreleased section added
