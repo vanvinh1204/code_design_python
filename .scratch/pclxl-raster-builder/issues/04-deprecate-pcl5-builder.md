@@ -6,6 +6,6 @@
 
 **Status:** ready-for-agent
 
-- [ ] Test: constructing `PCL5RasterBuilder` warns `DeprecationWarning`
-- [ ] Existing `PCL5RasterBuilder` tests still pass (warnings handled, not suppressed globally)
-- [ ] README and remaining example use `PCLXLRasterBuilder` with no `feed_direction`
+- [x] Test: constructing `PCL5RasterBuilder` warns `DeprecationWarning`
+- [x] Existing `PCL5RasterBuilder` tests still pass (warnings handled, not suppressed globally)
+- [x] README and remaining example use `PCLXLRasterBuilder` with no `feed_direction`

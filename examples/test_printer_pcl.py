@@ -12,96 +12,74 @@ if hasattr(sys.stdout, "reconfigure"):
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
 from PIL import Image
-from core_kit.devices import PCL5RasterBuilder, PCLNetworkPrinter
+from core_kit.devices import PCLXLRasterBuilder, PCLNetworkPrinter
 
 
 def run_pcl_builder_custom_test():
-    print("1. Kiểm thử PCL5RasterBuilder với khổ tem tùy chỉnh (102x148 mm, Tray 1, Short-Edge)...")
-    builder = PCL5RasterBuilder(
+    print("1. Kiểm thử PCLXLRasterBuilder với khổ tem tùy chỉnh (102x148 mm, khay TRAY2)...")
+    # tray là tên MEDIASOURCE PJL của chính máy in (4620 SDW: TRAY2, 4020SD: TRAY1)
+    builder = PCLXLRasterBuilder(
         paper_size="CUSTOM",
         width_mm=102.0,
         height_mm=148.0,
-        tray="TRAY1",
-        feed_direction="SHORTEDGEFEED",
+        tray="TRAY2",
         dpi=300,
         job_name="TEST_CUSTOM_LABEL",
     )
 
     # Tạo ảnh mẫu 1-bit kích thước 200x200 pixel đen
     test_img = Image.new("1", (200, 200), 0)
-    builder.add_page(
-        image=test_img,
-        rotate=90,
-        scale=(0.90, 0.94),
-        shift_x_mm=1.5,
-        shift_y_mm=-1.5,
-        auto_center=True,
-    )
+    builder.add_page(image=test_img, rotate=90)
     payload = builder.build()
 
     assert payload.startswith(b"\x1b%-12345X@PJL\r\n"), "Thiếu mã thoát Universal Exit Language (UEL)"
     assert b'@PJL JOB NAME = "TEST_CUSTOM_LABEL"\r\n' in payload, "Thiếu PJL JOB NAME"
-    assert b"@PJL SET PAPER = CUSTOM\r\n" in payload, "Thiếu cấu hình PAPER = CUSTOM"
-    assert b"@PJL SET PAPERWIDTH = 2891\r\n" in payload, "Sai giá trị PAPERWIDTH decipoints"
-    assert b"@PJL SET PAPERLENGTH = 4195\r\n" in payload, "Sai giá trị PAPERLENGTH decipoints"
-    assert b"@PJL SET MEDIASOURCE = TRAY1\r\n" in payload, "Thiếu MEDIASOURCE = TRAY1"
-    assert b"@PJL SET SHORTEDGEFEED = ON\r\n" in payload, "Thiếu SHORTEDGEFEED = ON"
-    assert b"@PJL SET FEEDDIR = SHORTEDGEFEED\r\n" in payload, "Thiếu FEEDDIR = SHORTEDGEFEED"
-    assert b"@PJL ENTER LANGUAGE = PCL\r\n" in payload, "Thiếu chuyển ngôn ngữ PCL"
-    assert b"\x1b*t300R" in payload, "Thiếu thiết lập độ phân giải 300 DPI"
-    assert b"\x1b*r1A" in payload, "Thiếu lệnh bắt đầu raster graphics"
-    assert b"\x1b*rB" in payload, "Thiếu lệnh kết thúc raster graphics"
-    assert b"\x0c" in payload, "Thiếu ký tự Form Feed đẩy trang"
-    assert payload.endswith(b"\x1b%-12345X@PJL EOJ\r\n\x1b%-12345X"), "Thiếu PJL EOJ và UEL kết thúc"
+    assert b"@PJL SET MEDIASOURCE = TRAY2\r\n" in payload, "Thiếu MEDIASOURCE = TRAY2"
+    assert b"@PJL ENTER LANGUAGE = PCLXL\r\n" in payload, "Thiếu chuyển ngôn ngữ PCLXL"
+    assert b"PAPER" not in payload, "PCL XL không gửi biến PJL PAPER/PAPERWIDTH/PAPERLENGTH"
+    assert b"FEEDDIR" not in payload and b"SHORTEDGEFEED" not in payload, "PCL XL không dùng hướng nạp giấy"
+    assert b") HP-PCL XL;2;0;" in payload, "Thiếu stream header PCL XL"
+    assert payload.endswith(b'\x1b%-12345X@PJL EOJ NAME = "TEST_CUSTOM_LABEL"\r\n\x1b%-12345X'), (
+        "Thiếu PJL EOJ và UEL kết thúc"
+    )
 
     print(f"   -> Thành công! Kích thước payload: {len(payload)} bytes.")
 
 
 def run_pcl_builder_standard_test():
-    print("2. Kiểm thử PCL5RasterBuilder với khổ giấy tiêu chuẩn (A4, MP Feeder, Long-Edge)...")
-    builder = PCL5RasterBuilder(
-        paper_size="A4",
-        tray="MPFEEDER",
-        feed_direction="LONGEDGEFEED",
-        dpi=300,
-        job_name="TEST_A4_REPORT",
-    )
+    print("2. Kiểm thử PCLXLRasterBuilder với khổ giấy tiêu chuẩn (A4, không chọn khay)...")
+    builder = PCLXLRasterBuilder(paper_size="A4", dpi=300, job_name="TEST_A4_REPORT")
     assert builder.width_mm == 210.0, "Sai chiều rộng mặc định của khổ A4"
     assert builder.height_mm == 297.0, "Sai chiều dài mặc định của khổ A4"
 
-    # Tạo ảnh mẫu trắng với một vạch kẻ đen ở giữa
     test_img = Image.new("RGB", (300, 300), (255, 255, 255))
-    builder.add_page(image=test_img, rotate=0, scale=1.0)
+    builder.add_page(image=test_img)
     payload = builder.build()
 
-    assert b"@PJL SET PAPER = A4\r\n" in payload, "Thiếu cấu hình PAPER = A4"
-    assert b"@PJL SET MEDIASOURCE = MPFEEDER\r\n" in payload, "Thiếu MEDIASOURCE = MPFEEDER"
-    assert b"@PJL SET SHORTEDGEFEED = OFF\r\n" in payload, "Thiếu SHORTEDGEFEED = OFF"
-    assert b"@PJL SET FEEDDIR = LONGEDGEFEED\r\n" in payload, "Thiếu FEEDDIR = LONGEDGEFEED"
+    assert b"MEDIASOURCE" not in payload, "tray=None không được gửi MEDIASOURCE"
     print(f"   -> Thành công! Kích thước payload A4: {len(payload)} bytes.")
 
 
 def run_raster_fidelity_test():
-    print("3. Kiểm thử độ chính xác điểm ảnh và nghịch đảo bit (Bitwise Inversion)...")
+    print("3. Kiểm thử độ chính xác điểm ảnh và đệm dòng raster PCL XL...")
     # Tạo ảnh có kích thước lẻ 11x2 pixel: dòng đầu gồm 8 pixel đen, 3 pixel trắng
     img = Image.new("1", (11, 2), 1)  # 1 là trắng
     for px in range(8):
         img.putpixel((px, 0), 0)  # 0 là đen
 
-    builder = PCL5RasterBuilder(
+    builder = PCLXLRasterBuilder(
         paper_size="CUSTOM",
         width_mm=11 * 25.4 / 300,
         height_mm=2 * 25.4 / 300,
         dpi=300,
     )
-    builder.add_page(image=img, rotate=0, scale=1.0, auto_center=False)
+    builder.add_page(image=img, auto_center=False)
     payload = builder.build()
 
-    # Độ rộng 11 pixel cần 2 bytes cho mỗi hàng (8 bits + 3 bits, 5 bits padding)
-    # Byte 1 của dòng 0 gồm 8 pixel đen -> đảo bit thành 0xFF (8 hạt mực toner)
-    # Byte 2 của dòng 0 gồm 3 pixel trắng và 5 bits đệm -> đảo bit thành 0x00
-    assert b"\x1b*b2W\xff\x00" in payload, "Nghịch đảo bit hoặc căn đệm hàng raster bị sai"
-    print("   -> Thành công! Dòng raster PCL 5 khớp hoàn toàn từng bit nhị phân.")
+    # PCL XL giữ nguyên bit (0 = đen). Mỗi dòng 11 pixel = 2 bytes, đệm 0xFF tới biên 4 bytes:
+    # dòng 0 = 0x00 (8 đen), 0xE0 (3 trắng + 5 bit đệm), 0xFF 0xFF; 2 dòng = 8 bytes dữ liệu.
+    assert b"\xfa\x08\x00\x00\x00\x00\xe0\xff\xff" in payload, "Bit điểm ảnh hoặc đệm dòng raster bị sai"
+    print("   -> Thành công! Dòng raster PCL XL khớp hoàn toàn từng bit nhị phân.")
 
 
 # Các ca giải mã trạng thái PJL nằm trong tests/test_devices_raw_printer.py
@@ -159,7 +137,7 @@ def run_network_printer_mock_test():
 
 def main():
     print("=" * 65)
-    print("KIỂM THỬ XÁC MINH: core_kit.devices (PCL 5 Raster & PJL Network Printer)")
+    print("KIỂM THỬ XÁC MINH: core_kit.devices (PCL XL Raster & PJL Network Printer)")
     print("=" * 65)
 
     run_pcl_builder_custom_test()
