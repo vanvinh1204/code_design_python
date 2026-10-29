@@ -41,8 +41,8 @@ class PCL5RasterBuilder:
         job_name: str = "PCL_PRINT_JOB",
     ):
         warnings.warn(
-            "PCL5RasterBuilder đã lỗi thời (không khai báo được khổ tùy chỉnh trên firmware "
-            "Brother); hãy dùng PCLXLRasterBuilder.",
+            "PCL5RasterBuilder đã lỗi thời (PCL 5 không khai báo được CustomMediaSize trên "
+            "Printer Family Brother); hãy dùng PCLXLRasterBuilder.",
             DeprecationWarning,
             stacklevel=2,
         )

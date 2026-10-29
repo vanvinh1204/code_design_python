@@ -95,3 +95,12 @@ def test_constructing_pcl5_builder_warns_deprecated_in_favour_of_pclxl():
 
     # stacklevel trỏ về nơi gọi, không phải bên trong printer_pcl.py
     assert record[0].filename == __file__
+
+
+def test_deprecation_message_uses_glossary_vocabulary():
+    with pytest.warns(DeprecationWarning) as record:
+        PCL5RasterBuilder(paper_size="A4")
+
+    message = str(record[0].message)
+    assert "CustomMediaSize" in message
+    assert "Printer Family Brother" in message
