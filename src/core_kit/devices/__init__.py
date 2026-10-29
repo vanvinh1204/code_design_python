@@ -1,4 +1,4 @@
-from core_kit.devices.printer_pcl import PCL5RasterBuilder, PCLNetworkPrinter
+from core_kit.devices.printer_pcl import PCL5RasterBuilder, PCLXLRasterBuilder, PCLNetworkPrinter
 from core_kit.devices.printer_tspl import TSPLBuilder, TSPLNetworkPrinter
 from core_kit.devices.serial_port import SerialScannerReader
 from core_kit.devices.printer_raw import (
@@ -22,6 +22,7 @@ __all__ = [
     "PrinterStatus",
     "PrinterConnectionError",
     "PCL5RasterBuilder",
+    "PCLXLRasterBuilder",
     "PCLNetworkPrinter",
     "TSPLBuilder",
     "TSPLNetworkPrinter",
