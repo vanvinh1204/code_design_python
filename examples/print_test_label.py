@@ -84,6 +84,33 @@ def get_font(size: int = 16) -> ImageFont.ImageFont:
         return ImageFont.load_default()
 
 
+def calibration_info_lines(
+    width_mm: float = 148.0,
+    height_mm: float = 102.0,
+    dpi: int = 300,
+    target_ip: str = DEFAULT_HOST,
+    scale_info: str | None = None,
+    shift_info: str | None = None,
+    tray_info: str | None = None,
+    rotate: int = DEFAULT_ROTATE,
+) -> list[str]:
+    """Các dòng của bảng thông tin kiểm thử in trên tem (phản ánh đúng cấu hình thực tế)."""
+    now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    effective_scale = scale_info or "X: 100% | Y: 100%"
+    effective_shift = shift_info or "Shift X: 0.0 mm | Shift Y: 0.0 mm"
+    effective_tray = tray_info or "Mặc định của máy in (không gửi MEDIASOURCE)"
+    return [
+        f"• Máy in đích: {target_ip}:9100",
+        f"• Khổ tem giấy: {height_mm:.1f} mm (Rộng) x {width_mm:.1f} mm (Dài)",
+        f"• Khay nạp: {effective_tray}",
+        f"• Độ phân giải: {dpi} DPI (1 dot = {25.4/dpi*1000:.1f} µm)",
+        f"• Hướng xoay: {rotate}° CW",
+        f"• Tỉ lệ Scale: {effective_scale}",
+        f"• Hiệu chỉnh lề: {effective_shift}",
+        f"• Thời điểm in: {now_str}",
+    ]
+
+
 def create_calibration_label(
     width_mm: float = 148.0,
     height_mm: float = 102.0,
@@ -92,6 +119,7 @@ def create_calibration_label(
     scale_info: str | None = None,
     shift_info: str | None = None,
     tray_info: str | None = None,
+    rotate: int = DEFAULT_ROTATE,
 ) -> Image.Image:
     """
     Tạo hình ảnh tem kiểm chuẩn kỹ thuật hoàn chỉnh (1-bit monochrome).
@@ -186,22 +214,16 @@ def create_calibration_label(
 
     # 5. Khối bảng thông tin kiểm thử
     info_top = title_box_top + 100
-    now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-    effective_scale = scale_info or "X: 100% | Y: 100%"
-    effective_shift = shift_info or "Shift X: 0.0 mm | Shift Y: 0.0 mm"
-    effective_tray = tray_info or "Mặc định của máy in (không gửi MEDIASOURCE)"
-
-    info_lines = [
-        f"• Máy in đích: {target_ip}:9100",
-        f"• Khổ tem giấy: {height_mm:.1f} mm (Rộng) x {width_mm:.1f} mm (Dài)",
-        f"• Khay nạp: {effective_tray}",
-        f"• Độ phân giải: {dpi} DPI (1 dot = {25.4/dpi*1000:.1f} µm)",
-        f"• Hướng xoay: 90° CW (ROTATE_270 trong bộ đệm)",
-        f"• Tỉ lệ Scale: {effective_scale}",
-        f"• Hiệu chỉnh lề: {effective_shift}",
-        f"• Thời điểm in: {now_str}",
-    ]
+    info_lines = calibration_info_lines(
+        width_mm=width_mm,
+        height_mm=height_mm,
+        dpi=dpi,
+        target_ip=target_ip,
+        scale_info=scale_info,
+        shift_info=shift_info,
+        tray_info=tray_info,
+        rotate=rotate,
+    )
 
     for i, line in enumerate(info_lines):
         draw.text((80, info_top + i * 32), line, fill=0, font=font_small)
@@ -400,7 +422,7 @@ def parse_simple_args(argv: list[str] | None = None) -> dict:
         elif arg == "--tray":
             if i + 1 < len(argv):
                 i += 1
-                args["tray"] = argv[i].upper()
+                args["tray"] = argv[i]
         elif arg.startswith("10.") or arg.startswith("192.") or arg.startswith("127.") or "." in arg:
             # Nhận diện địa chỉ IP được truyền trực tiếp
             args["host"] = arg
@@ -415,7 +437,7 @@ def parse_simple_args(argv: list[str] | None = None) -> dict:
 def build_payload(config: dict, image: Image.Image | None = None) -> bytes:
     """Dựng luồng byte PJL + PCL XL cho tem kiểm chuẩn theo cấu hình đã phân tích."""
     if image is None:
-        image = create_calibration_label(target_ip=config["host"])
+        image = create_calibration_label(target_ip=config["host"], rotate=config["rotate"])
     builder = PCLXLRasterBuilder(
         paper_size="CUSTOM",
         width_mm=DEFAULT_WIDTH_MM,
@@ -464,6 +486,7 @@ def main():
         scale_info=scale_info,
         shift_info=shift_info,
         tray_info=config["tray"] and f"{config['tray']} (PJL MEDIASOURCE)",
+        rotate=config["rotate"],
     )
     draw_time = (time.time() - t0) * 1000
     print(f"      -> Vẽ thành công canvas {test_img.width}x{test_img.height} px trong {draw_time:.1f}ms.")
