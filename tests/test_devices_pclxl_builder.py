@@ -229,3 +229,32 @@ def test_any_pillow_mode_is_converted_to_one_bit(content):
 def test_build_without_pages_raises_value_error():
     with pytest.raises(ValueError):
         _label_builder().build()
+
+
+def test_missing_pillow_raises_import_error_with_install_hint(monkeypatch):
+    builder = _label_builder()
+    monkeypatch.setitem(__import__("sys").modules, "PIL", None)
+
+    with pytest.raises(ImportError, match=r"pip install core_kit\[devices\]"):
+        builder.add_page(object())
+
+
+def _half_transparent_black(mode: str) -> Image.Image:
+    """Ảnh 40x40 toàn màu đen: nửa trái trong suốt, nửa phải đục."""
+    if mode == "P":
+        img = Image.new("P", (40, 40), 1)
+        img.putpalette([0, 0, 0, 0, 0, 0])  # cả hai chỉ số đều đen
+        img.paste(0, (0, 0, 20, 40))
+        img.info["transparency"] = 0  # chỉ số 0 trong suốt
+        return img
+    rgba = Image.new("RGBA", (40, 40), (0, 0, 0, 255))
+    rgba.paste((0, 0, 0, 0), (0, 0, 20, 40))
+    return rgba.convert(mode)
+
+
+@pytest.mark.parametrize("mode", ["P", "PA", "LA", "RGBA"])
+def test_transparent_pixels_are_composited_onto_white(mode):
+    content = _half_transparent_black(mode)
+    payload = _label_builder(width_mm=20.0, height_mm=20.0, dpi=254).add_page(content, auto_center=False).build()
+
+    assert _black_bbox(_page_images(payload)[0]) == (20, 0, 40, 40)

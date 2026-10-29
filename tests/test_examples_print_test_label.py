@@ -39,12 +39,13 @@ def test_default_payload_is_pclxl_without_tray_selection(script):
     assert b"PCL5" not in payload.split(b"@PJL ENTER")[0]
 
 
-def test_tray_and_host_from_argv_reach_the_payload(script):
+def test_tray_and_host_from_argv_reach_the_payload_verbatim(script):
     config = script.parse_simple_args(["10.45.1.191", "--tray", "tray2", "--dry-run"])
 
     assert config["host"] == "10.45.1.191"
+    assert config["tray"] == "tray2"
     assert config["dry_run"] is True
-    assert b"@PJL SET MEDIASOURCE = TRAY2\r\n" in script.build_payload(config)
+    assert b"@PJL SET MEDIASOURCE = tray2\r\n" in script.build_payload(config)
 
 
 def test_scale_and_shift_flags_override_defaults(script):
@@ -55,3 +56,11 @@ def test_scale_and_shift_flags_override_defaults(script):
     assert config["scale"] == (0.9, 0.95)
     assert (config["shift_x"], config["shift_y"]) == (1.5, -2.0)
     assert config["rotate"] == 0
+
+
+@pytest.mark.parametrize("rotate", [0, 90, 180, 270])
+def test_label_rotation_line_reflects_actual_rotate(script, rotate):
+    lines = script.calibration_info_lines(rotate=rotate)
+
+    rotation_lines = [line for line in lines if "Hướng xoay" in line]
+    assert rotation_lines == [f"• Hướng xoay: {rotate}° CW"]
