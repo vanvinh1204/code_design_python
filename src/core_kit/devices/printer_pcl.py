@@ -318,6 +318,64 @@ class PCL5RasterBuilder:
         return header_bytes + body_bytes + footer_bytes
 
 
+# --- Hằng số PCL XL (PCL XL Feature Reference Protocol Class 2.0) ---
+# Thẻ kiểu dữ liệu (data type tags)
+_TAG_UBYTE = 0xC0
+_TAG_UINT16 = 0xC1
+_TAG_UINT16_XY = 0xD1
+_TAG_REAL32_XY = 0xD5
+_TAG_ATTR_UBYTE = 0xF8  # tiền tố mã thuộc tính 1 byte
+_TAG_DATA_LENGTH = 0xFA  # dataLength (uint32) đứng trước khối dữ liệu nhúng
+
+# Mã thuộc tính (attribute IDs)
+_ATTR_COLOR_SPACE = 0x03
+_ATTR_MEDIA_SOURCE = 0x26
+_ATTR_ORIENTATION = 0x28
+_ATTR_CUSTOM_MEDIA_SIZE = 0x2F
+_ATTR_CUSTOM_MEDIA_SIZE_UNITS = 0x30
+_ATTR_PAGE_COPIES = 0x31
+_ATTR_POINT = 0x4C
+_ATTR_COLOR_DEPTH = 0x62
+_ATTR_BLOCK_HEIGHT = 0x63
+_ATTR_COLOR_MAPPING = 0x64
+_ATTR_COMPRESS_MODE = 0x65
+_ATTR_DESTINATION_SIZE = 0x67
+_ATTR_SOURCE_HEIGHT = 0x6B
+_ATTR_SOURCE_WIDTH = 0x6C
+_ATTR_START_LINE = 0x6D
+_ATTR_DATA_ORG = 0x82
+_ATTR_MEASURE = 0x86
+_ATTR_SOURCE_TYPE = 0x88
+_ATTR_UNITS_PER_MEASURE = 0x89
+_ATTR_ERROR_REPORT = 0x8F
+
+# Mã toán tử (operators)
+_OP_BEGIN_SESSION = 0x41
+_OP_END_SESSION = 0x42
+_OP_BEGIN_PAGE = 0x43
+_OP_END_PAGE = 0x44
+_OP_OPEN_DATA_SOURCE = 0x48
+_OP_CLOSE_DATA_SOURCE = 0x49
+_OP_SET_COLOR_SPACE = 0x6A
+_OP_SET_CURSOR = 0x6B
+_OP_BEGIN_IMAGE = 0xB0
+_OP_READ_IMAGE = 0xB1
+_OP_END_IMAGE = 0xB2
+
+# Giá trị liệt kê (enumerations)
+_E_GRAY = 1
+_E_PORTRAIT = 0
+_E_DEFAULT_SOURCE = 0
+_E_MILLIMETER = 1
+_E_DIRECT_PIXEL = 0
+_E_1BIT = 0
+_E_NO_COMPRESSION = 0
+_E_INCH = 0
+_E_ERROR_PAGE = 2
+_E_DEFAULT_DATA_SOURCE = 0
+_E_BINARY_LOW_BYTE_FIRST = 1
+
+
 class PCLXLRasterBuilder:
     """
     Trình dựng tác vụ in raster PCL XL (PCL 6) bọc trong PJL.
@@ -400,45 +458,52 @@ class PCLXLRasterBuilder:
 
     # --- Mã hóa thuộc tính PCL XL (binding little-endian) ---
     @staticmethod
-    def _ubyte(value: int, attr_id: int) -> bytes:
-        return bytes([0xC0, value, 0xF8, attr_id])
+    def _attr(attr_id: int) -> bytes:
+        return bytes([_TAG_ATTR_UBYTE, attr_id])
 
-    @staticmethod
-    def _uint16(value: int, attr_id: int) -> bytes:
-        return b"\xc1" + struct.pack("<H", value) + bytes([0xF8, attr_id])
+    @classmethod
+    def _ubyte(cls, value: int, attr_id: int) -> bytes:
+        return bytes([_TAG_UBYTE, value]) + cls._attr(attr_id)
 
-    @staticmethod
-    def _uint16_xy(x: int, y: int, attr_id: int) -> bytes:
-        return b"\xd1" + struct.pack("<HH", x, y) + bytes([0xF8, attr_id])
+    @classmethod
+    def _uint16(cls, value: int, attr_id: int) -> bytes:
+        return bytes([_TAG_UINT16]) + struct.pack("<H", value) + cls._attr(attr_id)
 
-    @staticmethod
-    def _real32_xy(x: float, y: float, attr_id: int) -> bytes:
-        return b"\xd5" + struct.pack("<ff", x, y) + bytes([0xF8, attr_id])
+    @classmethod
+    def _uint16_xy(cls, x: int, y: int, attr_id: int) -> bytes:
+        return bytes([_TAG_UINT16_XY]) + struct.pack("<HH", x, y) + cls._attr(attr_id)
+
+    @classmethod
+    def _real32_xy(cls, x: float, y: float, attr_id: int) -> bytes:
+        return bytes([_TAG_REAL32_XY]) + struct.pack("<ff", x, y) + cls._attr(attr_id)
 
     def _encode_page(self, canvas: Any) -> bytes:
         """Mã hóa một trang: BeginPage (CustomMediaSize mm) + toàn bộ khung trang dạng ảnh xám 1-bit."""
         width, height = canvas.width, canvas.height
         b = bytearray()
         # BeginPage: Orientation=ePortrait, MediaSource=eDefaultSource, CustomMediaSize (mm), eMillimeter
-        b += self._ubyte(0, 0x28) + self._ubyte(0, 0x26)
-        b += self._real32_xy(self.width_mm, self.height_mm, 0x2F) + self._ubyte(1, 0x30) + b"\x43"
+        b += self._ubyte(_E_PORTRAIT, _ATTR_ORIENTATION) + self._ubyte(_E_DEFAULT_SOURCE, _ATTR_MEDIA_SOURCE)
+        b += self._real32_xy(self.width_mm, self.height_mm, _ATTR_CUSTOM_MEDIA_SIZE)
+        b += self._ubyte(_E_MILLIMETER, _ATTR_CUSTOM_MEDIA_SIZE_UNITS) + bytes([_OP_BEGIN_PAGE])
         # SetColorSpace eGray
-        b += self._ubyte(1, 0x03) + b"\x6a"
+        b += self._ubyte(_E_GRAY, _ATTR_COLOR_SPACE) + bytes([_OP_SET_COLOR_SPACE])
         # SetCursor (0, 0)
-        b += self._uint16_xy(0, 0, 0x4C) + b"\x6b"
+        b += self._uint16_xy(0, 0, _ATTR_POINT) + bytes([_OP_SET_CURSOR])
         # BeginImage: eDirectPixel, e1Bit, SourceWidth, SourceHeight, DestinationSize
-        b += self._ubyte(0, 0x64) + self._ubyte(0, 0x62) + self._uint16(width, 0x6C)
-        b += self._uint16(height, 0x6B) + self._uint16_xy(width, height, 0x67) + b"\xb0"
+        b += self._ubyte(_E_DIRECT_PIXEL, _ATTR_COLOR_MAPPING) + self._ubyte(_E_1BIT, _ATTR_COLOR_DEPTH)
+        b += self._uint16(width, _ATTR_SOURCE_WIDTH) + self._uint16(height, _ATTR_SOURCE_HEIGHT)
+        b += self._uint16_xy(width, height, _ATTR_DESTINATION_SIZE) + bytes([_OP_BEGIN_IMAGE])
         # ReadImage: mỗi dòng đệm byte trắng (0xFF) tới biên 4 byte; 0 = đen, 1 = trắng (khớp PIL '1')
         stride = (width + 7) // 8
         padded = (stride + 3) // 4 * 4
         raw = canvas.tobytes()
         pad = b"\xff" * (padded - stride)
         data = b"".join(raw[r * stride:(r + 1) * stride] + pad for r in range(height))
-        b += self._uint16(0, 0x6D) + self._uint16(height, 0x63) + self._ubyte(0, 0x65) + b"\xb1"
-        b += b"\xfa" + struct.pack("<I", len(data)) + data
-        b += b"\xb2"  # EndImage
-        b += self._uint16(1, 0x31) + b"\x44"  # EndPage PageCopies=1
+        b += self._uint16(0, _ATTR_START_LINE) + self._uint16(height, _ATTR_BLOCK_HEIGHT)
+        b += self._ubyte(_E_NO_COMPRESSION, _ATTR_COMPRESS_MODE) + bytes([_OP_READ_IMAGE])
+        b += bytes([_TAG_DATA_LENGTH]) + struct.pack("<I", len(data)) + data
+        b += bytes([_OP_END_IMAGE])
+        b += self._uint16(1, _ATTR_PAGE_COPIES) + bytes([_OP_END_PAGE])
         return bytes(b)
 
     def _pjl_header(self) -> bytes:
@@ -457,11 +522,13 @@ class PCLXLRasterBuilder:
             raise ValueError("Chưa có trang nào để in. Hãy gọi add_page() trước khi build().")
         stream = bytearray(b") HP-PCL XL;2;0;Comment core_kit PCLXLRasterBuilder\n")
         # BeginSession: UnitsPerMeasure=(dpi, dpi), Measure=eInch, ErrorReport=eErrorPage
-        stream += self._uint16_xy(self.dpi, self.dpi, 0x89) + self._ubyte(0, 0x86) + self._ubyte(2, 0x8F) + b"\x41"
+        stream += self._uint16_xy(self.dpi, self.dpi, _ATTR_UNITS_PER_MEASURE) + self._ubyte(_E_INCH, _ATTR_MEASURE)
+        stream += self._ubyte(_E_ERROR_PAGE, _ATTR_ERROR_REPORT) + bytes([_OP_BEGIN_SESSION])
         # OpenDataSource: SourceType=eDefaultDataSource, DataOrg=eBinaryLowByteFirst
-        stream += self._ubyte(0, 0x88) + self._ubyte(1, 0x82) + b"\x48"
+        stream += self._ubyte(_E_DEFAULT_DATA_SOURCE, _ATTR_SOURCE_TYPE)
+        stream += self._ubyte(_E_BINARY_LOW_BYTE_FIRST, _ATTR_DATA_ORG) + bytes([_OP_OPEN_DATA_SOURCE])
         stream += b"".join(self.pages)
-        stream += b"\x49\x42"  # CloseDataSource, EndSession
+        stream += bytes([_OP_CLOSE_DATA_SOURCE, _OP_END_SESSION])
         return self._pjl_header() + bytes(stream) + self._pjl_footer()
 
 
