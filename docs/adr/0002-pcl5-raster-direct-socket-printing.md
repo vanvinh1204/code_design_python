@@ -1,6 +1,6 @@
 # PCL 5 Raster Direct Socket Printing
 
-Status: accepted
+Status: superseded by ADR-0003
 
 ## Context & Decision
 
