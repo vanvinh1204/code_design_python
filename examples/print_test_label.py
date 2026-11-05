@@ -59,7 +59,7 @@ from PIL import Image, ImageDraw, ImageFont
 from core_kit.devices import PCLNetworkPrinter, PCLXLRasterBuilder
 
 # Cấu hình mặc định máy in
-DEFAULT_HOST = os.getenv("PRINTER_HOST", "10.45.1.193")
+DEFAULT_HOST = os.getenv("PRINTER_HOST", "10.45.1.191")
 DEFAULT_PORT = int(os.getenv("PRINTER_PORT", "9100"))
 DEFAULT_TRAY: str | None = None  # Không chọn khay: chỉ gửi MEDIASOURCE khi có --tray
 DEFAULT_WIDTH_MM = 102.0
