@@ -26,9 +26,10 @@ venv/
 .venv/
 env/
 
-# IDE
+# IDE & AI agents
 .vscode/
 .idea/
+.claude/
 
 # Environment files
 .env
