@@ -17,15 +17,11 @@ import sys
 
 # Thiết lập bảng mã UTF-8 cho console Windows
 if hasattr(sys.stdout, "reconfigure"):
-    try:
-        sys.stdout.reconfigure(encoding="utf-8")
-    except Exception:
-        pass
+    try: sys.stdout.reconfigure(encoding="utf-8")
+    except Exception: pass
 if hasattr(sys.stderr, "reconfigure"):
-    try:
-        sys.stderr.reconfigure(encoding="utf-8")
-    except Exception:
-        pass
+    try: sys.stderr.reconfigure(encoding="utf-8")
+    except Exception: pass
 
 
 def run_git(args: list[str], check: bool = True) -> subprocess.CompletedProcess:
@@ -52,10 +48,8 @@ def get_current_branch() -> str:
     try:
         res = run_git(["rev-parse", "--abbrev-ref", "HEAD"])
         branch = res.stdout.strip()
-        if branch and branch != "HEAD":
-            return branch
-    except Exception:
-        pass
+        if branch and branch != "HEAD": return branch
+    except Exception: pass
 
     return "main"
 
