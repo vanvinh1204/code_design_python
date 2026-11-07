@@ -2,6 +2,16 @@ import os
 import sys
 from pathlib import Path
 
+from core_kit.utils.paths import app_dir, is_packaged
+
+
+def resolve_log_dir(log_dir: str) -> Path:
+    """Thư mục log: đường dẫn tương đối được neo vào thư mục chứa exe khi chạy bản đóng gói."""
+    path = Path(log_dir)
+    if is_packaged() and not path.is_absolute():
+        return app_dir() / path
+    return path
+
 
 def setup_logger(
     log_dir: str = "logs",
@@ -13,7 +23,8 @@ def setup_logger(
     Khởi tạo hệ thống ghi log tập trung.
     Hỗ trợ xuất ra cả Console và file xoay vòng (rotating file).
     """
-    Path(log_dir).mkdir(parents=True, exist_ok=True)
+    log_path = resolve_log_dir(log_dir)
+    log_path.mkdir(parents=True, exist_ok=True)
 
     if hasattr(sys.stdout, "reconfigure"):
         try:
@@ -36,7 +47,7 @@ def setup_logger(
         )
 
         # Log ra File xoay vòng theo ngày và dung lượng
-        log_file_path = os.path.join(log_dir, f"{app_name}_{{time:YYYY-MM-DD}}.log")
+        log_file_path = os.path.join(log_path, f"{app_name}_{{time:YYYY-MM-DD}}.log")
         logger.add(
             log_file_path,
             level=log_level,
@@ -69,7 +80,7 @@ def setup_logger(
 
             # File handler xoay vòng mỗi ngày
             fh = TimedRotatingFileHandler(
-                filename=os.path.join(log_dir, f"{app_name}.log"),
+                filename=os.path.join(log_path, f"{app_name}.log"),
                 when="midnight",
                 interval=1,
                 backupCount=30,

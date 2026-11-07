@@ -1,4 +1,3 @@
-import sys
 from pathlib import Path
 from typing import Optional, Union
 
@@ -7,6 +6,7 @@ from alembic.config import Config
 from loguru import logger
 
 from core_kit.database.base_model import Base
+from core_kit.utils.paths import app_dir, bundle_dir, is_packaged
 
 
 ALEMBIC_INI_TEMPLATE = """# A generic, single database configuration.
@@ -151,24 +151,18 @@ def downgrade() -> None:
 def resolve_script_location(script_location: Union[str, Path] = "migrations") -> Path:
     """
     Phân giải đường dẫn thư mục migration script.
-    Hỗ trợ cả môi trường phát triển lẫn môi trường đóng gói (PyInstaller / cx_Freeze).
+    Hỗ trợ cả môi trường phát triển lẫn bản đóng gói (Nuitka standalone/onefile, PyInstaller).
     """
     path_obj = Path(script_location)
     if path_obj.is_absolute() and path_obj.exists():
         return path_obj
 
-    # 1. Kiểm tra môi trường đóng gói (Frozen application / PyInstaller)
-    if getattr(sys, "frozen", False):
-        # Khi đóng gói bằng PyInstaller một file (--onefile), tài nguyên nằm trong _MEIPASS
-        if hasattr(sys, "_MEIPASS"):
-            meipass_path = Path(sys._MEIPASS) / path_obj
-            if meipass_path.exists():
-                return meipass_path
-
-        # Khi đóng gói dạng thư mục (--onedir), tài nguyên nằm cùng thư mục file .exe
-        exe_dir_path = Path(sys.executable).resolve().parent / path_obj
-        if exe_dir_path.exists():
-            return exe_dir_path
+    # 1. Bản đóng gói: ưu tiên dữ liệu gom kèm (datas), sau đó tới thư mục chứa exe
+    if is_packaged():
+        for base in (bundle_dir(), app_dir()):
+            candidate = base / path_obj
+            if candidate.exists():
+                return candidate
 
     # 2. Kiểm tra đường dẫn tương đối so với thư mục hiện tại (CWD)
     cwd_path = Path.cwd() / path_obj

@@ -3,6 +3,12 @@ from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from core_kit.config.vault import vault, ConfigVault
+from core_kit.utils.paths import app_dir, is_packaged
+
+
+def default_env_file() -> str:
+    """File .env mặc định: tương đối theo CWD khi chạy dev, nằm cạnh exe khi chạy bản đóng gói."""
+    return str(app_dir() / ".env") if is_packaged() else ".env"
 
 
 def _decrypt_config_values(data: Any) -> Any:
@@ -44,7 +50,7 @@ class BaseAppSettings(BaseSettings):
     serial_baudrate: int = Field(default=9600, description="Tốc độ Baudrate của cổng Serial")
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=default_env_file(),
         env_file_encoding="utf-8",
         extra="ignore"
     )

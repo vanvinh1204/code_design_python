@@ -16,8 +16,12 @@ from core_kit.utils.date_time import (
     now_utc,
     parse_vn_datetime,
 )
+from core_kit.utils.paths import app_dir, bundle_dir, is_packaged
 
 __all__ = [
+    "app_dir",
+    "bundle_dir",
+    "is_packaged",
     "PREFIX",
     "CIPHER_KEY_ENV_VAR",
     "DEFAULT_CIPHER_KEY",
