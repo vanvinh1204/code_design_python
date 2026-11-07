@@ -16,6 +16,7 @@ dependencies = [
 [project.scripts]
 encrypt-env = "core_kit.tools.encrypt_env:main"
 core-kit-encrypt-env = "core_kit.tools.encrypt_env:main"
+corekit = "core_kit.cli:main"
 
 [project.optional-dependencies]
 # Module Cấu hình
@@ -51,6 +52,13 @@ client = [
     "httpx>=0.25.0",
 ]
 
+# CLI corekit build/release (đóng gói exe bằng Nuitka) — cài vào dependency group dev của app
+build = [
+    "nuitka>=2.8",
+    "zstandard>=0.22",
+    "tomli>=2.0; python_version < '3.11'",
+]
+
 # Cài đặt tất cả phụ thuộc
 all = [
     "pydantic-settings>=2.0",
@@ -64,3 +72,8 @@ all = [
     "httpx>=0.25.0",
 ]
 
+[tool.pytest.ini_options]
+addopts = "-m 'not nuitka'"
+markers = [
+    "nuitka: build exe thật bằng Nuitka, chậm (chạy bằng: pytest -m nuitka)",
+]
