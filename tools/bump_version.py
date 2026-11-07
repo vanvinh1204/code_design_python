@@ -26,13 +26,13 @@ PYPROJECT_PATH = ROOT_DIR / "pyproject.toml"
 INIT_PATH = ROOT_DIR / "src" / "core_kit" / "__init__.py"
 
 
-def get_current_version() -> str:
+def get_current_version(pyproject_path: Path = PYPROJECT_PATH) -> str:
     """Đọc phiên bản hiện tại từ pyproject.toml."""
-    if not PYPROJECT_PATH.exists():
-        print(f"[LỖI] Không tìm thấy {PYPROJECT_PATH}")
+    if not pyproject_path.exists():
+        print(f"[LỖI] Không tìm thấy {pyproject_path}")
         sys.exit(1)
 
-    content = PYPROJECT_PATH.read_text(encoding="utf-8")
+    content = pyproject_path.read_text(encoding="utf-8")
     match = re.search(r'^version\s*=\s*["\']([^"\']+)["\']', content, re.MULTILINE)
     if not match:
         print("[LỖI] Không tìm thấy trường 'version' trong pyproject.toml")
@@ -67,9 +67,9 @@ def calculate_next_version(current: str, bump_type: str) -> str:
         sys.exit(1)
 
 
-def update_pyproject(new_version: str) -> None:
+def update_pyproject(new_version: str, pyproject_path: Path = PYPROJECT_PATH) -> None:
     """Cập nhật version trong pyproject.toml."""
-    content = PYPROJECT_PATH.read_text(encoding="utf-8")
+    content = pyproject_path.read_text(encoding="utf-8")
     updated = re.sub(
         r'^version\s*=\s*["\'][^"\']+["\']',
         f'version = "{new_version}"',
@@ -77,16 +77,16 @@ def update_pyproject(new_version: str) -> None:
         count=1,
         flags=re.MULTILINE,
     )
-    PYPROJECT_PATH.write_text(updated, encoding="utf-8")
+    pyproject_path.write_text(updated, encoding="utf-8")
 
 
-def update_init(new_version: str) -> None:
+def update_init(new_version: str, init_path: Path = INIT_PATH) -> None:
     """Cập nhật __version__ trong src/core_kit/__init__.py."""
-    if not INIT_PATH.exists():
-        print(f"[LỖI] Không tìm thấy {INIT_PATH}")
+    if not init_path.exists():
+        print(f"[LỖI] Không tìm thấy {init_path}")
         sys.exit(1)
 
-    content = INIT_PATH.read_text(encoding="utf-8")
+    content = init_path.read_text(encoding="utf-8")
     updated = re.sub(
         r'^__version__\s*=\s*["\'][^"\']+["\']',
         f'__version__ = "{new_version}"',
@@ -94,7 +94,7 @@ def update_init(new_version: str) -> None:
         count=1,
         flags=re.MULTILINE,
     )
-    INIT_PATH.write_text(updated, encoding="utf-8")
+    init_path.write_text(updated, encoding="utf-8")
 
 
 def print_usage() -> None:

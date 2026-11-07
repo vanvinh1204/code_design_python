@@ -32,7 +32,9 @@ dev = ["core-kit[build]"]          # CLI corekit build/release (Nuitka), không 
 core-kit = { git = "https://github.com/vanvinh1204/code_design_python.git", tag = "core_kit-v0.3.0" }
 ```
 
-Tag của thư viện theo dạng `core_kit-vX.Y.Z` (tag `v0.2.0` cũ vẫn giữ). Nâng version bằng `python tools/bump_version.py patch|minor|major`.
+Tag của thư viện theo dạng `core_kit-vX.Y.Z` (tag `v0.2.0` cũ vẫn giữ).
+
+Phát hành phiên bản mới bằng `python tools/release.py` (không có cờ, mọi lựa chọn hỏi trong CLI): kiểm git sạch và đúng nhánh `main`, chọn patch/minor/major, ghi version vào `pyproject.toml` + `src/core_kit/__init__.py`, đổi mục `[Unreleased]` trong `CHANGELOG.md` thành `[X.Y.Z] - <ngày>`, chạy pytest (lỗi thì trả file về như cũ), commit `chore(release): bump version to X.Y.Z` + tag `core_kit-vX.Y.Z`, rồi hỏi mới push và tạo GitHub Release (cần `gh`). Chỉ nâng số version không commit: `python tools/bump_version.py patch|minor|major`.
 
 ---
 
