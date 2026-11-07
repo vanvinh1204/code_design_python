@@ -19,6 +19,21 @@ pip install "git+https://github.com/your-username/core_kit.git#egg=core_kit[conf
 pip install "git+https://github.com/your-username/core_kit.git#egg=core_kit[client,devices,logger]"
 ```
 
+App theo chuẩn dự án (dùng `uv`) ghim `core_kit` theo tag `core_kit-vX.Y.Z` trong `pyproject.toml` của app:
+
+```toml
+[project]
+dependencies = ["core-kit[config,db]"]
+
+[dependency-groups]
+dev = ["core-kit[build]"]          # CLI corekit build/release (Nuitka), không gom vào exe
+
+[tool.uv.sources]
+core-kit = { git = "https://github.com/vanvinh1204/code_design_python.git", tag = "core_kit-v0.3.0" }
+```
+
+Tag của thư viện theo dạng `core_kit-vX.Y.Z` (tag `v0.2.0` cũ vẫn giữ). Nâng version bằng `python tools/bump_version.py patch|minor|major`.
+
 ---
 
 ## 2. Hướng dẫn sử dụng các Module
@@ -204,3 +219,46 @@ plaintext = decrypt_val(ciphertext)
 # -> MySecretDbPassword
 ```
 
+### 2.8. Đóng gói exe và phát hành bản giao khách (`corekit build` / `corekit release`)
+
+Cài `core-kit[build]` vào dependency group `dev` của app (xem mục 1), rồi chạy trong thư mục app (`apps/<tên>/`). Lệnh chỉ đọc `pyproject.toml` ở thư mục hiện tại. Backend đóng gói duy nhất là **Nuitka**; lần đầu Nuitka tự tải trình biên dịch C (MinGW64) nếu máy chưa có.
+
+```toml
+[tool.corekit.build]
+company = "Công ty ABC"              # tùy chọn, ghi vào thông tin file exe
+
+[[tool.corekit.build.targets]]      # lặp khối này cho mỗi exe (ví dụ UI + tool CLI)
+name = "MyApp"                       # tên exe và tên sản phẩm
+entry = "main.py"                    # mặc định main.py (chuẩn v1.2.0)
+icon = "assets/icon.ico"
+windowed = true                      # app giao diện, không hiện cửa sổ cmd
+onefile = false                      # true: một file exe duy nhất
+datas = ["assets/"]                  # dữ liệu chỉ đọc gom vào bản build (thư mục hoặc file)
+plugins = ["pyside6"]                # plugin Nuitka, khai tường minh
+copy = ["models/"]                   # chép nguyên vẹn ra cạnh exe, khách sửa/thay được
+extra_args = []                      # truyền thẳng cho Nuitka khi schema không đủ
+
+[tool.corekit.release]
+include = ["docs/HUONG_DAN.pdf"]     # tài liệu đi kèm bản giao khách
+```
+
+**`uv run corekit build`** hỏi chế độ (Enter = giao khách) và, khi có nhiều target, target cần build (Enter = tất cả). Kết quả ở `build/<fast|release>/<name>/`, đã kèm `.env` (hoặc `.env.example` nếu chưa có `.env`) và các mục `copy` — bấm exe là chạy.
+
+| | Nhanh (`--fast`) | Giao khách (`--release`, mặc định) |
+|---|---|---|
+| LTO | tắt | bật |
+| `--deployment` | tắt (giữ kiểm tra tương thích để dò lỗi thiếu module) | bật |
+| Console | `attach` (chạy từ cmd thấy traceback) | theo `windowed` |
+
+Chạy không tương tác (CI): `corekit build --release --target MyApp` (`--target` lặp được; thiếu thì build tất cả, thiếu chế độ thì báo lỗi).
+
+**`uv run corekit release`** lần lượt:
+1. kiểm git sạch;
+2. chọn version (patch/minor/major/giữ nguyên; CI: `--bump patch`), từ chối nếu tag đã tồn tại;
+3. kiểm `.env.example`, các mục `include`, mục CHANGELOG của version mới (thiếu thì cảnh báo, hỏi tiếp tục);
+4. ghi version vào `pyproject.toml` (và `uv lock`), build giao khách mọi target — lỗi thì trả lại như cũ;
+5. đóng `dist/<name>-<version>-win-x64.zip` cho mỗi target: một thư mục gốc `<name>-<version>/`, **không có `.env`**, luôn có `.env.example`, kèm `include`;
+6. commit `chore(release): <app> vX.Y.Z` + tag `<app>-vX.Y.Z`;
+7. hỏi (mặc định Không; CI: `--publish`/`--no-publish`) rồi mới push và tạo GitHub Release kèm các zip (cần GitHub CLI `gh`), notes lấy từ CHANGELOG hoặc tự sinh.
+
+Code app nên dùng `core_kit.utils.app_dir()` (thư mục chứa exe: `.env`, `models/`, `logs/`) và `bundle_dir()` (dữ liệu gom kèm `datas`) thay cho `__file__`, vì bản onefile chạy từ thư mục giải nén tạm.

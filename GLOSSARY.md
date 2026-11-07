@@ -35,3 +35,16 @@ _Avoid_: Status parser, Health check, Printer monitor
 **Printer Offline**:
 Trạng thái khi không thiết lập được kết nối hoặc truy vấn tới máy in (timeout, bị từ chối kết nối). Khác với máy in trả lời được nhưng đang báo lỗi (kẹt giấy, mở nắp).
 _Avoid_: Connection Error status, Printer error
+
+**Build Target**:
+Một exe khai trong một khối `[[tool.corekit.build.targets]]` của app; mỗi target build độc lập ra thư mục riêng `build/<chế độ>/<name>/`.
+_Avoid_: Spec, Build profile, Multidist
+
+**Bản giao khách (Release Package)**:
+File zip `<name>-<version>-win-x64.zip` mà `corekit release` tạo cho một Build Target: một thư mục gốc kèm version, không chứa `.env` thật, luôn có `.env.example` cùng tài liệu đi kèm.
+_Avoid_: Installer, Artifact, Bản build
+
+**App Dir**:
+Thư mục chứa file exe của bản đóng gói (khi chạy dev là thư mục hiện tại), nơi đặt những thứ khách sửa hoặc thay được: `.env`, `models/`, `logs/`. Khác **Bundle Dir** (nơi chứa dữ liệu chỉ đọc gom kèm, là thư mục giải nén tạm với bản onefile).
+_Avoid_: Base dir, Root dir, `__file__` dir
+

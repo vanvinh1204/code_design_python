@@ -10,12 +10,18 @@ và quy chuẩn [Semantic Versioning](https://semver.org/lang/vi/).
 ## [Unreleased]
 
 ### Đã thêm (Added)
+- **CLI `corekit`** (extra `build`, cài vào dependency group `dev` của app), backend đóng gói duy nhất là Nuitka:
+  - `corekit build`: đọc `[[tool.corekit.build.targets]]` (`name`, `entry`, `icon`, `windowed`, `onefile`, `datas`, `plugins`, `copy`, `extra_args`, cùng `[tool.corekit.build].company`), build từng target ra `build/<fast|release>/<name>/` kèm `.env` và các mục `copy`, bấm exe là chạy. Chọn chế độ Nhanh / Giao khách và target qua menu; cờ `--fast`, `--release`, `--target` cho CI.
+  - `corekit release`: kiểm git sạch, chọn version (`--bump`), build giao khách mọi target, đóng `dist/<name>-<version>-win-x64.zip` (không `.env`, luôn có `.env.example`, kèm `[tool.corekit.release].include`), commit + tag `<app>-vX.Y.Z`, hỏi rồi mới push và tạo GitHub Release. Lỗi trước khi commit thì trả `pyproject.toml`/`uv.lock` về như cũ.
+- `core_kit.utils.app_dir()` / `bundle_dir()` / `is_packaged()`: nhận diện dev, Nuitka standalone/onefile và PyInstaller.
 - **Bộ dựng lệnh in PCL XL raster (`PCLXLRasterBuilder`)** trong `core_kit.devices`:
   - Đóng gói ảnh raster 1-bit thành job PCL XL bọc PJL, khai báo khổ giấy luôn qua `CustomMediaSize` (mm), kể cả khổ chuẩn (A4, A5, A6, Letter, ...).
   - In đúng khổ tem 102 x 148 mm trên cả ApeosPort Print 4020SD và ApeosPrint 4620 SDW mà không cần đổi cấu hình khay hay bù co giãn/dịch lề (xem ADR-0003).
   - Khay chọn qua PJL `MEDIASOURCE` truyền nguyên văn (`tray=None` mặc định: không chọn khay); không phát biến PJL khổ giấy/hướng nạp.
 
 ### Đã thay đổi (Changed)
+- Tìm thư mục migration (`resolve_script_location`) theo `bundle_dir()` → `app_dir()` → CWD, chạy đúng với bản build Nuitka. Khi chạy bản đóng gói, `BaseAppSettings` đọc `.env` cạnh exe và `setup_logger` đặt thư mục log tương đối cạnh exe; chạy dev không đổi.
+- Tag phát hành thư viện theo chuẩn `core_kit-vX.Y.Z` (tag `v0.2.0` cũ giữ nguyên).
 - Ví dụ in tem hiệu chỉnh (`print_test_label.py`) chuyển sang `PCLXLRasterBuilder` với mặc định scale 1.0, shift 0 mm, không chọn khay, xoay 90 độ; bỏ đọc biến môi trường `PRINT_SCALE_X/Y`, `PRINT_SHIFT_X/Y`.
 
 ### Ngừng khuyến nghị (Deprecated)
