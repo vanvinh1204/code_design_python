@@ -128,7 +128,7 @@ def main() -> None:
     print(f"  2. Chạy lệnh commit:")
     print(f'     git commit -am "chore(release): bump version to {new_version}"')
     print(f"  3. Đánh dấu Git Tag:")
-    print(f'     git tag -a v{new_version} -m "Release v{new_version}"')
+    print(f'     git tag -a core_kit-v{new_version} -m "Release core_kit v{new_version}"')
     print("=" * 60)
 
 
