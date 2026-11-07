@@ -7,6 +7,13 @@ from typing import Sequence, Tuple
 from core_kit.cli.ports import CorekitError, Ports
 
 
+def _ask(ports: Ports, prompt: str) -> str:
+    try:
+        return ports.ask(prompt).strip()
+    except (EOFError, KeyboardInterrupt):
+        raise CorekitError("Đã hủy.") from None
+
+
 def choose(ports: Ports, title: str, options: Sequence[Tuple[str, str]], default: str) -> str:
     """Hiện menu `key) nhãn`, trả về key được chọn; Enter = `default`, nhập sai thì hỏi lại."""
     keys = [key for key, _ in options]
@@ -14,10 +21,7 @@ def choose(ports: Ports, title: str, options: Sequence[Tuple[str, str]], default
     for key, label in options:
         ports.echo(f"  {key}) {label}")
     while True:
-        try:
-            answer = ports.ask(f"Lựa chọn [{default}]: ").strip()
-        except (EOFError, KeyboardInterrupt):
-            raise CorekitError("Đã hủy.") from None
+        answer = _ask(ports, f"Lựa chọn [{default}]: ")
         if not answer:
             return default
         if answer in keys:
@@ -28,10 +32,7 @@ def choose(ports: Ports, title: str, options: Sequence[Tuple[str, str]], default
 def confirm(ports: Ports, question: str, default: bool) -> bool:
     hint = "[Y/n]" if default else "[y/N]"
     while True:
-        try:
-            answer = ports.ask(f"{question} {hint}: ").strip().lower()
-        except (EOFError, KeyboardInterrupt):
-            raise CorekitError("Đã hủy.") from None
+        answer = _ask(ports, f"{question} {hint}: ").lower()
         if not answer:
             return default
         if answer in ("y", "yes", "c", "co", "có"):

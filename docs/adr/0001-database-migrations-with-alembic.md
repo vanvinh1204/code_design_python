@@ -19,3 +19,7 @@ We decided to adopt **Alembic** as the official database migration engine, provi
 - Applications can automatically upgrade their schema to `head` during startup with a single call to `db_manager.migrate()`.
 - Desktop SQLite databases can safely alter, add, and drop columns through Alembic's batch mode.
 - Each downstream application maintains its own version history under its own repository, avoiding shared-library migration conflicts.
+
+## Update (2026-11-07)
+
+Packaged-executable detection is no longer tied to `sys.frozen` (PyInstaller). `resolve_script_location` now uses `core_kit.utils.paths`: it looks in the **Bundle Dir**, then the **App Dir**, then the CWD, and recognises Nuitka standalone/onefile builds (produced by `corekit build`) as well as PyInstaller.

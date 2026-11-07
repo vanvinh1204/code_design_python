@@ -123,3 +123,15 @@ def test_non_numeric_version_is_error(tmp_path, monkeypatch):
     env = FakeEnv()
     assert main(["build", "--fast"], env.ports) == 1
     assert "version" in env.output
+
+
+@pytest.mark.parametrize("field, item", [("copy", "secrets/"), ("copy", "logs"), ("datas", "data/app.db")])
+def test_runtime_folders_refused_in_copy_and_datas(tmp_path, monkeypatch, field, item):
+    root = write_app(tmp_path / "a", f'[[tool.corekit.build.targets]]\nname = "A"\n{field} = ["{item}"]\n')
+    (root / item.rstrip("/")).parent.mkdir(parents=True, exist_ok=True)
+    (root / item.rstrip("/")).mkdir(exist_ok=True)
+    monkeypatch.chdir(root)
+    env = FakeEnv()
+    assert main(["build", "--fast"], env.ports) == 1
+    assert item.split("/")[0] in env.output
+    assert env.nuitka_calls == []

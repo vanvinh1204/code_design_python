@@ -15,6 +15,8 @@ from core_kit.cli.project import BuildTarget, Project
 FAST = "fast"
 RELEASE = "release"
 MODE_LABELS = {FAST: "Nhanh", RELEASE: "Giao khách"}
+# Thư mục runtime theo chuẩn dự án: app tự tạo khi chạy, không bao giờ đóng gói.
+RUNTIME_FOLDERS = ("data", "logs", "secrets")
 
 
 def output_dir(project: Project, target: BuildTarget, mode: str) -> Path:
@@ -52,10 +54,15 @@ def validate_target(project: Project, target: BuildTarget) -> None:
         raise CorekitError(f"{where}: entry '{target.entry}' không phải file.")
     if target.icon:
         _existing(project, target.icon, f"{where}: icon")
-    for item in target.datas:
-        _existing(project, item, f"{where}: datas")
-    for item in target.copy:
-        _existing(project, item, f"{where}: copy")
+    for field, items in (("datas", target.datas), ("copy", target.copy)):
+        for item in items:
+            top = _rel(item).split("/")[0].lower()
+            if top in RUNTIME_FOLDERS:
+                raise CorekitError(
+                    f"{where}: {field} không được chứa '{item}' — {', '.join(RUNTIME_FOLDERS)} là thư mục "
+                    "runtime (app tự tạo khi chạy), không đóng gói để tránh lộ dữ liệu/bí mật."
+                )
+            _existing(project, item, f"{where}: {field}")
 
 
 def nuitka_command(

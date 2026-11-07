@@ -48,3 +48,7 @@ _Avoid_: Installer, Artifact, Bản build
 Thư mục chứa file exe của bản đóng gói (khi chạy dev là thư mục hiện tại), nơi đặt những thứ khách sửa hoặc thay được: `.env`, `models/`, `logs/`. Khác **Bundle Dir** (nơi chứa dữ liệu chỉ đọc gom kèm, là thư mục giải nén tạm với bản onefile).
 _Avoid_: Base dir, Root dir, `__file__` dir
 
+
+**Bundle Dir**:
+Thư mục chứa dữ liệu chỉ đọc gom kèm bản đóng gói (`datas`): trùng **App Dir** với bản standalone, là thư mục giải nén tạm với bản onefile; khi chạy dev là thư mục hiện tại.
+_Avoid_: `_MEIPASS` (khi nói chung chung), Resource dir

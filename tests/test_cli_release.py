@@ -212,8 +212,7 @@ def test_publish_pushes_and_creates_release_with_changelog_notes(app):
     assert str(app / "dist" / "MyApp-0.3.1-win-x64.zip") in gh
     assert str(app / "dist" / "MyTool-0.3.1-win-x64.zip") in gh
     assert gh[gh.index("--title") + 1] == "kho v0.3.1"
-    assert gh[gh.index("--notes") + 1].startswith("### Đã thêm")
-    assert "Bản đầu" not in gh[gh.index("--notes") + 1]
+    assert "--notes-file" in gh
 
 
 def test_publish_without_changelog_uses_generated_notes(app):
@@ -245,3 +244,51 @@ def test_missing_gh_keeps_local_tag_and_pushes_nothing(app):
 def test_both_publish_flags_is_error(app):
     env = git_env()
     assert main(["release", "--publish", "--no-publish"], env.ports) == 1
+
+
+def test_notes_passed_via_notes_file(app):
+    seen = {}
+
+    def gh_create(cmd):
+        notes_file = cmd[cmd.index("--notes-file") + 1]
+        seen["text"] = open(notes_file, encoding="utf-8").read()
+        return ProcessResult(0, "https://github.com/x/y/releases/tag/kho-v0.3.1")
+
+    env = git_env(handlers={("gh", "release", "create"): gh_create})
+    assert main(["release", "--bump", "patch", "--publish"], env.ports) == 0
+    (gh,) = env.commands_starting("gh", "release", "create")
+    assert "--notes" not in gh
+    assert seen["text"].startswith("### Đã thêm")
+
+
+def test_commit_failure_unstages_and_restores(app):
+    original = (app / "pyproject.toml").read_bytes()
+    env = git_env(handlers={("git", "commit"): ProcessResult(1, "", "hook rejected")})
+    assert main(["release", "--bump", "patch", "--no-publish"], env.ports) == 1
+    assert (app / "pyproject.toml").read_bytes() == original
+    assert ["git", "reset", "-q", "--", "pyproject.toml"] in env.commands
+    assert env.commands_starting("git", "tag", "-a") == []
+    assert "hook rejected" in env.output
+
+
+def test_tag_existing_on_remote_is_refused(app):
+    env = git_env(
+        handlers={
+            ("git", "remote"): ProcessResult(0, "origin\n"),
+            ("git", "ls-remote", "--tags", "origin"): ProcessResult(0, "abc123\trefs/tags/kho-v0.3.1\n"),
+        }
+    )
+    assert main(["release", "--bump", "patch"], env.ports) == 1
+    assert "kho-v0.3.1" in env.output
+    assert env.nuitka_calls == []
+
+
+def test_unreachable_remote_only_warns(app):
+    env = git_env(
+        handlers={
+            ("git", "remote"): ProcessResult(0, "origin\n"),
+            ("git", "ls-remote", "--tags", "origin"): ProcessResult(128, "", "Could not resolve host"),
+        }
+    )
+    assert main(["release", "--bump", "patch", "--no-publish"], env.ports) == 0
+    assert "remote" in env.output

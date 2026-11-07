@@ -9,6 +9,7 @@ Trình tự: git sạch → chọn version → kiểm .env.example / include / C
 from __future__ import annotations
 
 import re
+import tempfile
 import zipfile
 from dataclasses import replace
 from pathlib import Path
@@ -102,6 +103,10 @@ def package_target(project: Project, target: BuildTarget) -> Path:
     return zip_path
 
 
+def _detail(result: ProcessResult) -> str:
+    return (result.stderr or result.stdout).strip()
+
+
 class _Git:
     def __init__(self, project: Project, ports: Ports) -> None:
         self.root = project.root
@@ -113,8 +118,7 @@ class _Git:
     def must(self, *args: str) -> ProcessResult:
         result = self(*args)
         if result.returncode != 0:
-            detail = (result.stderr or result.stdout).strip()
-            raise CorekitError(f"git {' '.join(args)} lỗi (mã {result.returncode}): {detail}")
+            raise CorekitError(f"git {' '.join(args)} lỗi (mã {result.returncode}): {_detail(result)}")
         return result
 
 
@@ -151,6 +155,18 @@ def _check_inputs(project: Project, version: str, ports: Ports) -> None:
             raise CorekitError("Đã dừng để cập nhật CHANGELOG.md.")
 
 
+def _check_remote_tag(tag: str, git: _Git, ports: Ports) -> None:
+    """Tag đã có trên remote (chưa fetch) cũng bị từ chối; không kết nối được remote thì chỉ cảnh báo."""
+    remotes = git("remote").stdout.split()
+    if "origin" not in remotes:
+        return
+    result = git("ls-remote", "--tags", "origin", f"refs/tags/{tag}")
+    if result.returncode != 0:
+        ports.echo(f"Cảnh báo: không kiểm được tag trên remote origin ({_detail(result)}).")
+    elif result.stdout.strip():
+        raise CorekitError(f"Tag {tag} đã có trên remote origin. Chọn version khác.")
+
+
 def _publish(project: Project, tag: str, zips: List[Path], git: _Git, ports: Ports) -> None:
     if ports.which("gh") is None:
         raise CorekitError(
@@ -161,11 +177,16 @@ def _publish(project: Project, tag: str, zips: List[Path], git: _Git, ports: Por
     git.must("push", "origin", tag)
     cmd = ["gh", "release", "create", tag, *[str(z) for z in zips], "--title", f"{project.name} v{project.version}"]
     notes = changelog_section(project.root / "CHANGELOG.md", project.version)
-    cmd += ["--notes", notes] if notes else ["--generate-notes"]
-    result = ports.run(cmd, project.root, capture=True)
+    with tempfile.TemporaryDirectory(prefix="corekit-notes-") as tmp:
+        if notes:
+            notes_file = Path(tmp) / "notes.md"
+            notes_file.write_text(notes + "\n", encoding="utf-8")
+            cmd += ["--notes-file", str(notes_file)]
+        else:
+            cmd.append("--generate-notes")
+        result = ports.run(cmd, project.root, capture=True)
     if result.returncode != 0:
-        detail = (result.stderr or result.stdout).strip()
-        raise CorekitError(f"gh release create lỗi (mã {result.returncode}): {detail}")
+        raise CorekitError(f"gh release create lỗi (mã {result.returncode}): {_detail(result)}")
     ports.echo(f"Đã tạo GitHub Release {tag}. {result.stdout.strip()}".rstrip())
 
 
@@ -175,7 +196,7 @@ def run_release(project: Project, bump: Optional[str], publish: Optional[bool], 
     git = _Git(project, ports)
     status = git("status", "--porcelain")
     if status.returncode != 0:
-        raise CorekitError(f"Không đọc được trạng thái git: {(status.stderr or status.stdout).strip()}")
+        raise CorekitError(f"Không đọc được trạng thái git: {_detail(status)}")
     if status.stdout.strip():
         raise CorekitError("Git còn thay đổi chưa commit. Commit hoặc stash trước khi phát hành.")
 
@@ -183,6 +204,7 @@ def run_release(project: Project, bump: Optional[str], publish: Optional[bool], 
     tag = f"{project.name}-v{new_version}"
     if git.must("tag", "-l", tag).stdout.strip():
         raise CorekitError(f"Tag {tag} đã tồn tại. Chọn version khác.")
+    _check_remote_tag(tag, git, ports)
     _check_inputs(project, new_version, ports)
 
     pyproject = project.pyproject
@@ -192,6 +214,8 @@ def run_release(project: Project, bump: Optional[str], publish: Optional[bool], 
     released = replace(project, version=new_version)
     zips: List[Path] = []
     changed = new_version != project.version
+    version_files = ["pyproject.toml", *(["uv.lock"] if original_lock is not None else [])]
+    staged = False
     try:
         if changed:
             text = original_pyproject.decode("utf-8")
@@ -199,14 +223,17 @@ def run_release(project: Project, bump: Optional[str], publish: Optional[bool], 
             if original_lock is not None:
                 locked = ports.run(["uv", "lock"], project.root, capture=True)
                 if locked.returncode != 0:
-                    raise CorekitError(f"uv lock lỗi: {(locked.stderr or locked.stdout).strip()}")
+                    raise CorekitError(f"uv lock lỗi: {_detail(locked)}")
         build_all(released, released.targets, RELEASE, ports)
         for target in released.targets:
             zips.append(package_target(released, target))
         if changed:
-            git.must("add", "pyproject.toml", *(["uv.lock"] if original_lock is not None else []))
+            git.must("add", *version_files)
+            staged = True
             git.must("commit", "-m", f"chore(release): {project.name} v{new_version}")
     except BaseException:
+        if staged:
+            git("reset", "-q", "--", *version_files)
         pyproject.write_bytes(original_pyproject)
         if original_lock is not None:
             lock.write_bytes(original_lock)
