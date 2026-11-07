@@ -9,6 +9,10 @@ và quy chuẩn [Semantic Versioning](https://semver.org/lang/vi/).
 
 ## [Unreleased]
 
+---
+
+## [0.3.0] - 2026-11-07
+
 ### Đã thêm (Added)
 - **CLI `corekit`** (extra `build`, cài vào dependency group `dev` của app), backend đóng gói duy nhất là Nuitka:
   - `corekit build`: đọc `[[tool.corekit.build.targets]]` (`name`, `entry`, `icon`, `windowed`, `onefile`, `datas`, `plugins`, `copy`, `extra_args`, cùng `[tool.corekit.build].company`), build từng target ra `build/<fast|release>/<name>/` kèm `.env` và các mục `copy`, bấm exe là chạy. Chọn chế độ Nhanh / Giao khách và target qua menu; cờ `--fast`, `--release`, `--target` cho CI.
