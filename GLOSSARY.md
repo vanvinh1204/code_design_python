@@ -48,6 +48,10 @@ _Avoid_: Installer, Artifact, Bản build
 File JSON ở gốc Bản giao khách (ngang `.env.example`) mà `corekit release` ghi riêng cho từng Build Target: tên repo, tên app, tên Build Target, version, thời điểm build, đường dẫn health (`health_path`) và version `core_kit` lúc build. Công cụ cài đọc nó để biết đang cài gì thay vì đoán từ tên file zip.
 _Avoid_: Metadata, Build info, Manifest (khi nói chung chung)
 
+**Health URL**:
+URL HTTP (`http://127.0.0.1:<port><health_path>`) mà công cụ vận hành gọi để biết web còn trả lời và đang chạy bản nào, lưu trong biến môi trường `HEALTH_URL` của Windows service; `health_path` lấy từ **Manifest phát hành**, router `GET /health` của `core_kit.web` là đầu trả lời.
+_Avoid_: Status Probe (dành cho máy in), Health check, Ping
+
 **App Dir**:
 Thư mục chứa file exe của bản đóng gói (khi chạy dev là thư mục hiện tại), nơi cài app và đặt những thứ khách sửa hoặc thay được đi kèm bản cài: `.env`, `models/`. Khác **Bundle Dir** (nơi chứa dữ liệu chỉ đọc gom kèm, là thư mục giải nén tạm với bản onefile) và **Data Dir** (nơi ghi dữ liệu sinh lúc chạy).
 _Avoid_: Base dir, Root dir, `__file__` dir

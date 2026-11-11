@@ -44,7 +44,7 @@ class Project:
     company: Optional[str]
     targets: Tuple[BuildTarget, ...]
     release_include: Tuple[str, ...]
-    # Đường dẫn health ghi vào Manifest phát hành (`release.json`), công cụ cài ghép với port thành Health URL.
+    # Đường dẫn health ghi vào Manifest phát hành (`release.json`); công cụ cài ghép với port thành Health URL.
     health_path: str = DEFAULT_HEALTH_PATH
 
     @property
@@ -69,11 +69,12 @@ def _opt_str(value: Any, where: str) -> Optional[str]:
 
 
 def _health_path(value: Any, where: str) -> str:
-    if value is None:
+    path = _opt_str(value, where)
+    if path is None:
         return DEFAULT_HEALTH_PATH
-    if not isinstance(value, str) or not value.startswith("/"):
+    if not path.startswith("/"):
         raise CorekitError(f"{where} phải là chuỗi bắt đầu bằng '/' (ví dụ '{DEFAULT_HEALTH_PATH}').")
-    return value
+    return path
 
 
 def _bool(value: Any, where: str) -> bool:

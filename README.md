@@ -202,7 +202,7 @@ db_file = data_dir() / "app.sqlite"    # Data Dir: dữ liệu sinh lúc chạy 
 
 `data_dir()` trả về biến môi trường `DATA_DIR` nếu được đặt (tự tạo thư mục nếu chưa có), không thì bằng `app_dir()`. Nhờ vậy chạy dev (`uv run main.py`), chạy exe tay hay chạy dưới Windows service (NSSM đặt `DATA_DIR=%ProgramData%\<service>`) đều một đường code. `setup_logger` của `core_kit.logger` mặc định ghi vào `data_dir() / "logs"`; truyền đường dẫn tuyệt đối thì giữ nguyên.
 
-### 2.7. Health check cho app server (`core_kit.web`)
+### 2.7. Router GET /health cho app server (`core_kit.web`)
 
 Cần extra `web` (`fastapi`). `make_health_router(version)` trả về `APIRouter` có `GET /health` → `200 {"status": "ok", "version": "<version>"}`; đây là hợp đồng mà công cụ vận hành (`nssm_manager`) gọi để biết web còn trả lời và đang chạy bản nào. Router không tự gắn vào app, không kiểm tra DB hay dịch vụ phụ thuộc và không cần xác thực — app gắn một dòng trong `entrypoints/api/`:
 
@@ -294,16 +294,21 @@ Chạy không tương tác (CI): `corekit build --release --target MyApp` (`--ta
 
 ```json
 {
-  "repo": "kho",                            // tên thư mục gốc repo git chứa app (không có .git thì tên thư mục app)
-  "app": "server",                          // [project].name
-  "target": "KhoServer",                    // tên Build Target
+  "repo": "kho",
+  "app": "server",
+  "target": "KhoServer",
   "version": "1.2.0",
-  "built_at": "2026-11-11T09:30:00+07:00",  // ISO 8601, giờ địa phương kèm offset
-  "health_path": "/health",                 // [tool.corekit.release].health_path, mặc định /health
-  "core_kit": "0.4.0"                       // version core_kit chạy lệnh release
+  "built_at": "2026-11-11T09:30:00+07:00",
+  "health_path": "/health",
+  "core_kit": "0.4.0"
 }
 ```
 
-`health_path` phải là chuỗi bắt đầu bằng `/`; sai kiểu thì lệnh dừng với lỗi cấu hình như các khóa khác.
+- `repo`: tên thư mục gốc repo git chứa app (không có `.git` thì tên thư mục app);
+- `app`: `[project].name`;
+- `target`: tên Build Target;
+- `built_at`: ISO 8601, giờ địa phương kèm offset;
+- `health_path`: `[tool.corekit.release].health_path`, mặc định `/health`; công cụ cài ghép với port thành Health URL. Phải là chuỗi bắt đầu bằng `/`, sai kiểu thì lệnh dừng với lỗi cấu hình như các khóa khác;
+- `core_kit`: version `core_kit` chạy lệnh release.
 
 Code app nên dùng `core_kit.utils.app_dir()` (thư mục chứa exe: `.env`, `models/`), `data_dir()` (dữ liệu sinh lúc chạy: `logs/`, SQLite...; theo biến môi trường `DATA_DIR` nếu có) và `bundle_dir()` (dữ liệu gom kèm `datas`) thay cho `__file__`, vì bản onefile chạy từ thư mục giải nén tạm (xem mục 2.6).

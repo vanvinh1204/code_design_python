@@ -16,7 +16,7 @@ import zipfile
 from dataclasses import replace
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, List, Optional
 
 from core_kit import __version__ as CORE_KIT_VERSION
 from core_kit.cli.build import RELEASE, build_all, output_dir, validate_target
@@ -90,7 +90,7 @@ def repo_name(root: Path) -> str:
     return root.name
 
 
-def manifest(project: Project, target: BuildTarget) -> Dict[str, Any]:
+def manifest(project: Project, target: BuildTarget) -> dict[str, Any]:
     """Manifest phát hành: công cụ cài đọc để biết repo, app, target, version và đường dẫn health."""
     return {
         "repo": repo_name(project.root),
