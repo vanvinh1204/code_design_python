@@ -45,9 +45,12 @@ File zip `<name>-<version>-win-x64.zip` mà `corekit release` tạo cho một Bu
 _Avoid_: Installer, Artifact, Bản build
 
 **App Dir**:
-Thư mục chứa file exe của bản đóng gói (khi chạy dev là thư mục hiện tại), nơi đặt những thứ khách sửa hoặc thay được: `.env`, `models/`, `logs/`. Khác **Bundle Dir** (nơi chứa dữ liệu chỉ đọc gom kèm, là thư mục giải nén tạm với bản onefile).
+Thư mục chứa file exe của bản đóng gói (khi chạy dev là thư mục hiện tại), nơi cài app và đặt những thứ khách sửa hoặc thay được đi kèm bản cài: `.env`, `models/`. Khác **Bundle Dir** (nơi chứa dữ liệu chỉ đọc gom kèm, là thư mục giải nén tạm với bản onefile) và **Data Dir** (nơi ghi dữ liệu sinh lúc chạy).
 _Avoid_: Base dir, Root dir, `__file__` dir
 
+**Data Dir**:
+Thư mục dữ liệu sinh lúc chạy (`logs/`, SQLite, upload...), app tìm qua `data_dir()`: là biến môi trường `DATA_DIR` nếu được đặt (tự tạo nếu chưa có), không thì trùng **App Dir**. Tách khỏi **App Dir** vì nơi cài có thể không ghi được với tài khoản thường (ví dụ `%ProgramFiles%` khi chạy dưới Windows service); chạy dev, chạy exe tay, chạy dưới service đều một đường code.
+_Avoid_: Log dir, Working dir, Thư mục làm việc, `%ProgramData%` (khi nói chung chung)
 
 **Bundle Dir**:
 Thư mục chứa dữ liệu chỉ đọc gom kèm bản đóng gói (`datas`): trùng **App Dir** với bản standalone, là thư mục giải nén tạm với bản onefile; khi chạy dev là thư mục hiện tại.

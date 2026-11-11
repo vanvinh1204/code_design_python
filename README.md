@@ -190,6 +190,18 @@ order_code = f"ORD-{generate_short_id(6)}"
 time_str = format_vn_datetime(now_utc())
 ```
 
+Thư mục gốc của app (`core_kit.utils`), dùng thay cho `__file__` vì bản onefile chạy từ thư mục giải nén tạm:
+
+```python
+from core_kit.utils import app_dir, bundle_dir, data_dir
+
+env_file = app_dir() / ".env"          # App Dir: nơi cài — .env, models/, các mục copy của corekit build
+model = bundle_dir() / "assets" / "x"  # Bundle Dir: dữ liệu chỉ đọc gom kèm (datas)
+db_file = data_dir() / "app.sqlite"    # Data Dir: dữ liệu sinh lúc chạy — logs/, SQLite, upload...
+```
+
+`data_dir()` trả về biến môi trường `DATA_DIR` nếu được đặt (tự tạo thư mục nếu chưa có), không thì bằng `app_dir()`. Nhờ vậy chạy dev (`uv run main.py`), chạy exe tay hay chạy dưới Windows service (NSSM đặt `DATA_DIR=%ProgramData%\<service>`) đều một đường code. `setup_logger` của `core_kit.logger` mặc định ghi vào `data_dir() / "logs"`; truyền đường dẫn tuyệt đối thì giữ nguyên.
+
 ### 2.7. Công cụ mã hóa cấu hình .env (`core_kit.tools.encrypt_env`)
 
 #### Cách 1: Sử dụng qua dòng lệnh (CLI)
@@ -263,4 +275,4 @@ Chạy không tương tác (CI): `corekit build --release --target MyApp` (`--ta
 6. commit `chore(release): <app> vX.Y.Z` + tag `<app>-vX.Y.Z`;
 7. hỏi (mặc định Không; CI: `--publish`/`--no-publish`) rồi mới push và tạo GitHub Release kèm các zip (cần GitHub CLI `gh`), notes lấy từ CHANGELOG hoặc tự sinh.
 
-Code app nên dùng `core_kit.utils.app_dir()` (thư mục chứa exe: `.env`, `models/`, `logs/`) và `bundle_dir()` (dữ liệu gom kèm `datas`) thay cho `__file__`, vì bản onefile chạy từ thư mục giải nén tạm.
+Code app nên dùng `core_kit.utils.app_dir()` (thư mục chứa exe: `.env`, `models/`), `data_dir()` (dữ liệu sinh lúc chạy: `logs/`, SQLite...; theo biến môi trường `DATA_DIR` nếu có) và `bundle_dir()` (dữ liệu gom kèm `datas`) thay cho `__file__`, vì bản onefile chạy từ thư mục giải nén tạm (xem mục 2.6).

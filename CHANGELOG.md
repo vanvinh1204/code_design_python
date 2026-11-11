@@ -9,6 +9,13 @@ và quy chuẩn [Semantic Versioning](https://semver.org/lang/vi/).
 
 ## [Unreleased]
 
+### Đã thêm (Added)
+- `core_kit.utils.data_dir()` (export cạnh `app_dir()` / `bundle_dir()`): thư mục dữ liệu sinh lúc chạy (Data Dir) — là biến môi trường `DATA_DIR` nếu được đặt (tự tạo thư mục nếu chưa có), không thì bằng `app_dir()`. Chạy dev, chạy exe tay, chạy dưới Windows service đều một đường code. Glossary thêm **Data Dir**.
+
+### Đã thay đổi (Changed)
+- `setup_logger` neo thư mục log tương đối (mặc định `logs`) vào `data_dir()` thay vì chỉ neo vào `app_dir()` khi chạy bản đóng gói: đặt `DATA_DIR` thì log ghi vào `<DATA_DIR>/logs/` kể cả khi chạy dev; không đặt thì như trước (cạnh exe, hoặc thư mục hiện tại khi chạy dev). Đường dẫn tuyệt đối truyền vào vẫn được tôn trọng.
+- Docstring module `core_kit.utils.paths` đổi ví dụ chạy dev `py main.py` thành `uv run main.py` và nêu rõ Data Dir khác App Dir ở đâu.
+
 ---
 
 ## [0.3.0] - 2026-11-07
