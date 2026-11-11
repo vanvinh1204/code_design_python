@@ -12,8 +12,8 @@ Bạn có thể cài đặt toàn bộ hoặc cài theo từng nhóm module (Ext
 # Cài đặt toàn bộ tính năng
 pip install "git+https://github.com/your-username/core_kit.git#egg=core_kit[all]"
 
-# Dự án Web (FastAPI) chỉ cần: Cấu hình, Database, Xác thực
-pip install "git+https://github.com/your-username/core_kit.git#egg=core_kit[config,db,auth]"
+# Dự án Web (FastAPI) chỉ cần: Cấu hình, Database, Xác thực, Health (/health)
+pip install "git+https://github.com/your-username/core_kit.git#egg=core_kit[config,db,auth,web]"
 
 # Dự án Desktop (PySide6) chỉ cần: Client API, Thiết bị in ấn/quét mã, Logger
 pip install "git+https://github.com/your-username/core_kit.git#egg=core_kit[client,devices,logger]"
@@ -23,7 +23,7 @@ App theo chuẩn dự án (dùng `uv`) ghim `core_kit` theo tag `core_kit-vX.Y.Z
 
 ```toml
 [project]
-dependencies = ["core-kit[config,db]"]
+dependencies = ["core-kit[config,db,web]"]
 
 [dependency-groups]
 dev = ["core-kit[build]"]          # CLI corekit build/release (Nuitka), không gom vào exe
@@ -190,7 +190,21 @@ order_code = f"ORD-{generate_short_id(6)}"
 time_str = format_vn_datetime(now_utc())
 ```
 
-### 2.7. Công cụ mã hóa cấu hình .env (`core_kit.tools.encrypt_env`)
+### 2.7. Health check cho app server (`core_kit.web`)
+
+Cần extra `web` (`fastapi`). `make_health_router(version)` trả về `APIRouter` có `GET /health` → `200 {"status": "ok", "version": "<version>"}`; đây là hợp đồng mà công cụ vận hành (`nssm_manager`) gọi để biết web còn trả lời và đang chạy bản nào. Router không tự gắn vào app, không kiểm tra DB hay dịch vụ phụ thuộc và không cần xác thực — app gắn một dòng trong `entrypoints/api/`:
+
+```python
+from fastapi import FastAPI
+from core_kit.web import make_health_router
+
+from myapp import __version__   # đúng version của app ([project].version lúc build)
+
+app = FastAPI()
+app.include_router(make_health_router(__version__))
+```
+
+### 2.8. Công cụ mã hóa cấu hình .env (`core_kit.tools.encrypt_env`)
 
 #### Cách 1: Sử dụng qua dòng lệnh (CLI)
 Sau khi cài đặt `core_kit`, lệnh `encrypt-env` (hoặc `core-kit-encrypt-env`) có sẵn trong terminal:
@@ -221,7 +235,7 @@ plaintext = decrypt_val(ciphertext)
 # -> MySecretDbPassword
 ```
 
-### 2.8. Đóng gói exe và phát hành bản giao khách (`corekit build` / `corekit release`)
+### 2.9. Đóng gói exe và phát hành bản giao khách (`corekit build` / `corekit release`)
 
 Cài `core-kit[build]` vào dependency group `dev` của app (xem mục 1), rồi chạy trong thư mục app (`apps/<tên>/`). Lệnh chỉ đọc `pyproject.toml` ở thư mục hiện tại. Backend đóng gói duy nhất là **Nuitka**; lần đầu Nuitka tự tải trình biên dịch C (MinGW64) nếu máy chưa có.
 
