@@ -1,9 +1,12 @@
-"""Kiểm thử `corekit release` qua `main(argv, ports)`: git, version, build, zip, rollback, publish."""
+"""Kiểm thử `corekit release` qua `main(argv, ports)`: git, version, build, zip, rollback, publish, release.json."""
 
+import json
 import zipfile
+from datetime import datetime
 
 import pytest
 
+import core_kit
 from core_kit.cli import main
 from core_kit.cli.ports import ProcessResult
 from corekit_fakes import FakeEnv, write_app
@@ -194,6 +197,62 @@ def test_missing_changelog_section_non_interactive_continues_with_warning(app):
     env = git_env()
     assert main(["release", "--bump", "minor", "--no-publish"], env.ports) == 0
     assert "Cảnh báo" in env.output
+
+
+# ---- nssm_manager v1, ticket 03: Manifest phát hành release.json ----
+
+MANIFEST_KEYS = {"repo", "app", "target", "version", "built_at", "health_path", "core_kit"}
+
+
+def _manifest(zip_path, folder):
+    with zipfile.ZipFile(zip_path) as archive:
+        return json.loads(archive.read(f"{folder}/release.json").decode("utf-8"))
+
+
+def test_release_json_in_every_zip_describes_its_target(app, tmp_path):
+    (tmp_path / ".git").mkdir()  # app nằm ở <repo>/apps/kho → repo là tên thư mục chứa .git
+    before = datetime.now().astimezone().replace(microsecond=0)
+    assert main(["release", "--bump", "patch", "--no-publish"], git_env().ports) == 0
+
+    for target in ("MyApp", "MyTool"):
+        data = _manifest(app / "dist" / f"{target}-0.3.1-win-x64.zip", f"{target}-0.3.1")
+        assert set(data) == MANIFEST_KEYS
+        assert data["repo"] == tmp_path.name
+        assert data["app"] == "kho"
+        assert data["target"] == target
+        assert data["version"] == "0.3.1"
+        assert data["health_path"] == "/health"
+        assert data["core_kit"] == core_kit.__version__
+        built_at = datetime.fromisoformat(data["built_at"])
+        assert built_at.utcoffset() is not None  # giờ địa phương kèm offset
+        assert before <= built_at <= datetime.now().astimezone()
+
+
+def test_release_json_sits_next_to_env_example(app):
+    assert main(["release", "--bump", "patch", "--no-publish"], git_env().ports) == 0
+    with zipfile.ZipFile(app / "dist" / "MyApp-0.3.1-win-x64.zip") as archive:
+        names = archive.namelist()
+    assert "MyApp-0.3.1/release.json" in names and "MyApp-0.3.1/.env.example" in names
+    assert [n for n in names if n.endswith("release.json")] == ["MyApp-0.3.1/release.json"]
+
+
+def test_custom_health_path_written_to_release_json(app):
+    with open(app / "pyproject.toml", "a", encoding="utf-8") as f:
+        f.write('health_path = "/api/health"\n')
+    assert main(["release", "--bump", "patch", "--no-publish"], git_env().ports) == 0
+    data = _manifest(app / "dist" / "MyTool-0.3.1-win-x64.zip", "MyTool-0.3.1")
+    assert data["health_path"] == "/api/health"
+
+
+@pytest.mark.parametrize("value", ['"health"', "true", '["/health"]'])
+def test_invalid_health_path_is_config_error_before_build(app, value):
+    with open(app / "pyproject.toml", "a", encoding="utf-8") as f:
+        f.write(f"health_path = {value}\n")
+    env = git_env()
+    assert main(["release", "--bump", "patch", "--no-publish"], env.ports) == 1
+    assert "[tool.corekit.release].health_path" in env.output
+    assert env.nuitka_calls == []
+    assert _version(app) == "0.3.0"
 
 
 # ---- ticket 07: publish ----

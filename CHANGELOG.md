@@ -9,6 +9,9 @@ và quy chuẩn [Semantic Versioning](https://semver.org/lang/vi/).
 
 ## [Unreleased]
 
+### Đã thêm (Added)
+- `corekit release` ghi **Manifest phát hành `release.json`** vào gốc mỗi Bản giao khách (ngang `.env.example`), một manifest cho mỗi Build Target: `repo`, `app`, `target`, `version`, `built_at` (ISO 8601 kèm offset), `health_path` (mặc định `/health`, đổi qua `[tool.corekit.release].health_path`, phải bắt đầu bằng `/`), `core_kit`.
+
 ---
 
 ## [0.3.0] - 2026-11-07
