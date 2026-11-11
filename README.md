@@ -268,6 +268,7 @@ extra_args = []                      # truyền thẳng cho Nuitka khi schema kh
 
 [tool.corekit.release]
 include = ["docs/HUONG_DAN.pdf"]     # tài liệu đi kèm bản giao khách
+health_path = "/health"             # đường dẫn health ghi vào release.json (mặc định /health, phải bắt đầu bằng /)
 ```
 
 **`uv run corekit build`** hỏi chế độ (Enter = giao khách) và, khi có nhiều target, target cần build (Enter = tất cả). Kết quả ở `build/<fast|release>/<name>/`, đã kèm `.env` (hoặc `.env.example` nếu chưa có `.env`) và các mục `copy` — bấm exe là chạy.
@@ -285,8 +286,24 @@ Chạy không tương tác (CI): `corekit build --release --target MyApp` (`--ta
 2. chọn version (patch/minor/major/giữ nguyên; CI: `--bump patch`), từ chối nếu tag đã tồn tại;
 3. kiểm `.env.example`, các mục `include`, mục CHANGELOG của version mới (thiếu thì cảnh báo, hỏi tiếp tục);
 4. ghi version vào `pyproject.toml` (và `uv lock`), build giao khách mọi target — lỗi thì trả lại như cũ;
-5. đóng `dist/<name>-<version>-win-x64.zip` cho mỗi target: một thư mục gốc `<name>-<version>/`, **không có `.env`**, luôn có `.env.example`, kèm `include`;
+5. đóng `dist/<name>-<version>-win-x64.zip` cho mỗi target: một thư mục gốc `<name>-<version>/`, **không có `.env`**, luôn có `.env.example`, kèm `include` và Manifest phát hành `release.json`;
 6. commit `chore(release): <app> vX.Y.Z` + tag `<app>-vX.Y.Z`;
 7. hỏi (mặc định Không; CI: `--publish`/`--no-publish`) rồi mới push và tạo GitHub Release kèm các zip (cần GitHub CLI `gh`), notes lấy từ CHANGELOG hoặc tự sinh.
+
+**Manifest phát hành `release.json`** nằm ở gốc mỗi zip (ngang `.env.example`), để công cụ cài (ví dụ `nssm_manager`) biết đang cài repo nào, app nào, version nào và gọi health ở đâu mà không đoán từ tên file. Mỗi zip một manifest đúng target của nó:
+
+```json
+{
+  "repo": "kho",                            // tên thư mục gốc repo git chứa app (không có .git thì tên thư mục app)
+  "app": "server",                          // [project].name
+  "target": "KhoServer",                    // tên Build Target
+  "version": "1.2.0",
+  "built_at": "2026-11-11T09:30:00+07:00",  // ISO 8601, giờ địa phương kèm offset
+  "health_path": "/health",                 // [tool.corekit.release].health_path, mặc định /health
+  "core_kit": "0.4.0"                       // version core_kit chạy lệnh release
+}
+```
+
+`health_path` phải là chuỗi bắt đầu bằng `/`; sai kiểu thì lệnh dừng với lỗi cấu hình như các khóa khác.
 
 Code app nên dùng `core_kit.utils.app_dir()` (thư mục chứa exe: `.env`, `models/`), `data_dir()` (dữ liệu sinh lúc chạy: `logs/`, SQLite...; theo biến môi trường `DATA_DIR` nếu có) và `bundle_dir()` (dữ liệu gom kèm `datas`) thay cho `__file__`, vì bản onefile chạy từ thư mục giải nén tạm (xem mục 2.6).

@@ -15,6 +15,8 @@ else:  # pragma: no cover - Python 3.10
     import tomli as tomllib
 
 TARGETS_TABLE = "[[tool.corekit.build.targets]]"
+RELEASE_TABLE = "[tool.corekit.release]"
+DEFAULT_HEALTH_PATH = "/health"
 
 _TARGET_KEYS = {
     "name", "entry", "icon", "windowed", "onefile", "datas", "plugins", "copy", "extra_args",
@@ -42,6 +44,8 @@ class Project:
     company: Optional[str]
     targets: Tuple[BuildTarget, ...]
     release_include: Tuple[str, ...]
+    # Đường dẫn health ghi vào Manifest phát hành (`release.json`), công cụ cài ghép với port thành Health URL.
+    health_path: str = DEFAULT_HEALTH_PATH
 
     @property
     def pyproject(self) -> Path:
@@ -61,6 +65,14 @@ def _opt_str(value: Any, where: str) -> Optional[str]:
         return None
     if not isinstance(value, str) or not value.strip():
         raise CorekitError(f"{where} phải là chuỗi khác rỗng.")
+    return value
+
+
+def _health_path(value: Any, where: str) -> str:
+    if value is None:
+        return DEFAULT_HEALTH_PATH
+    if not isinstance(value, str) or not value.startswith("/"):
+        raise CorekitError(f"{where} phải là chuỗi bắt đầu bằng '/' (ví dụ '{DEFAULT_HEALTH_PATH}').")
     return value
 
 
@@ -142,5 +154,6 @@ def load_project(root: Path) -> Project:
         version=version,
         company=_opt_str(build.get("company"), "[tool.corekit.build].company"),
         targets=targets,
-        release_include=_str_list(release.get("include"), "[tool.corekit.release].include"),
+        release_include=_str_list(release.get("include"), f"{RELEASE_TABLE}.include"),
+        health_path=_health_path(release.get("health_path"), f"{RELEASE_TABLE}.health_path"),
     )
