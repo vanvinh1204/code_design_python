@@ -2,15 +2,15 @@ import os
 import sys
 from pathlib import Path
 
-from core_kit.utils.paths import app_dir, is_packaged
+from core_kit.utils.paths import data_dir
 
 
 def resolve_log_dir(log_dir: str) -> Path:
-    """Thư mục log: đường dẫn tương đối được neo vào thư mục chứa exe khi chạy bản đóng gói."""
+    """Thư mục log: đường dẫn tương đối được neo vào Data Dir (``data_dir()``: ``DATA_DIR`` nếu đặt, không thì App Dir); đường dẫn tuyệt đối giữ nguyên."""
     path = Path(log_dir)
-    if is_packaged() and not path.is_absolute():
-        return app_dir() / path
-    return path
+    if path.is_absolute():
+        return path
+    return data_dir() / path
 
 
 def setup_logger(
@@ -64,10 +64,10 @@ def setup_logger(
         import logging
         from logging.handlers import TimedRotatingFileHandler
 
-        logger = logging.getLogger(app_name)
-        logger.setLevel(getattr(logging, log_level.upper(), logging.INFO))
+        std_logger = logging.getLogger(app_name)
+        std_logger.setLevel(getattr(logging, log_level.upper(), logging.INFO))
 
-        if not logger.handlers:
+        if not std_logger.handlers:
             formatter = logging.Formatter(
                 fmt="%(asctime)s | %(levelname)-8s | %(name)s:%(funcName)s:%(lineno)d - %(message)s",
                 datefmt="%y.%m.%d %H:%M:%S"
@@ -76,7 +76,7 @@ def setup_logger(
             # Console handler
             ch = logging.StreamHandler(sys.stdout)
             ch.setFormatter(formatter)
-            logger.addHandler(ch)
+            std_logger.addHandler(ch)
 
             # File handler xoay vòng mỗi ngày
             fh = TimedRotatingFileHandler(
@@ -91,6 +91,6 @@ def setup_logger(
                 datefmt="%y.%m.%d %H:%M:%S"
             )
             fh.setFormatter(file_formatter)
-            logger.addHandler(fh)
+            std_logger.addHandler(fh)
 
-        return logger
+        return std_logger
