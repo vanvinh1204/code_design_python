@@ -2,4 +2,4 @@
 core_kit: Thư viện module dùng chung cho Web (FastAPI) và Desktop App (PySide6).
 """
 
-__version__ = "0.3.0"
+__version__ = "0.4.0"

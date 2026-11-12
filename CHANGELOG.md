@@ -9,6 +9,10 @@ và quy chuẩn [Semantic Versioning](https://semver.org/lang/vi/).
 
 ## [Unreleased]
 
+---
+
+## [0.4.0] - 2026-11-12
+
 ### Đã thêm (Added)
 - **Package `core_kit.web`** (extra `web`, cần `fastapi`): `make_health_router(version)` trả về `APIRouter` có `GET /health` → `200 {"status": "ok", "version": "<version>"}`. Không tự gắn vào app, không kiểm tra DB hay dịch vụ phụ thuộc, không cần xác thực; app gắn trong `entrypoints/api/` để công cụ vận hành (`nssm_manager`) biết web còn trả lời và đang chạy bản nào.
 - `core_kit.utils.data_dir()` (export cạnh `app_dir()` / `bundle_dir()`): thư mục dữ liệu sinh lúc chạy (Data Dir) — là biến môi trường `DATA_DIR` nếu được đặt (tự tạo thư mục nếu chưa có), không thì bằng `app_dir()`. Chạy dev, chạy exe tay, chạy dưới Windows service đều một đường code. Glossary thêm **Data Dir**.
