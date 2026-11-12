@@ -12,8 +12,8 @@ Bạn có thể cài đặt toàn bộ hoặc cài theo từng nhóm module (Ext
 # Cài đặt toàn bộ tính năng
 pip install "git+https://github.com/your-username/core_kit.git#egg=core_kit[all]"
 
-# Dự án Web (FastAPI) chỉ cần: Cấu hình, Database, Xác thực
-pip install "git+https://github.com/your-username/core_kit.git#egg=core_kit[config,db,auth]"
+# Dự án Web (FastAPI) chỉ cần: Cấu hình, Database, Xác thực, Health (/health)
+pip install "git+https://github.com/your-username/core_kit.git#egg=core_kit[config,db,auth,web]"
 
 # Dự án Desktop (PySide6) chỉ cần: Client API, Thiết bị in ấn/quét mã, Logger
 pip install "git+https://github.com/your-username/core_kit.git#egg=core_kit[client,devices,logger]"
@@ -23,7 +23,7 @@ App theo chuẩn dự án (dùng `uv`) ghim `core_kit` theo tag `core_kit-vX.Y.Z
 
 ```toml
 [project]
-dependencies = ["core-kit[config,db]"]
+dependencies = ["core-kit[config,db,web]"]
 
 [dependency-groups]
 dev = ["core-kit[build]"]          # CLI corekit build/release (Nuitka), không gom vào exe
@@ -190,7 +190,33 @@ order_code = f"ORD-{generate_short_id(6)}"
 time_str = format_vn_datetime(now_utc())
 ```
 
-### 2.7. Công cụ mã hóa cấu hình .env (`core_kit.tools.encrypt_env`)
+Thư mục gốc của app (`core_kit.utils`), dùng thay cho `__file__` vì bản onefile chạy từ thư mục giải nén tạm:
+
+```python
+from core_kit.utils import app_dir, bundle_dir, data_dir
+
+env_file = app_dir() / ".env"          # App Dir: nơi cài — .env, models/, các mục copy của corekit build
+model = bundle_dir() / "assets" / "x"  # Bundle Dir: dữ liệu chỉ đọc gom kèm (datas)
+db_file = data_dir() / "app.sqlite"    # Data Dir: dữ liệu sinh lúc chạy — logs/, SQLite, upload...
+```
+
+`data_dir()` trả về biến môi trường `DATA_DIR` nếu được đặt (tự tạo thư mục nếu chưa có), không thì bằng `app_dir()`. Nhờ vậy chạy dev (`uv run main.py`), chạy exe tay hay chạy dưới Windows service (NSSM đặt `DATA_DIR=%ProgramData%\<service>`) đều một đường code. `setup_logger` của `core_kit.logger` mặc định ghi vào `data_dir() / "logs"`; truyền đường dẫn tuyệt đối thì giữ nguyên.
+
+### 2.7. Router GET /health cho app server (`core_kit.web`)
+
+Cần extra `web` (`fastapi`). `make_health_router(version)` trả về `APIRouter` có `GET /health` → `200 {"status": "ok", "version": "<version>"}`; đây là hợp đồng mà công cụ vận hành (`nssm_manager`) gọi để biết web còn trả lời và đang chạy bản nào. Router không tự gắn vào app, không kiểm tra DB hay dịch vụ phụ thuộc và không cần xác thực — app gắn một dòng trong `entrypoints/api/`:
+
+```python
+from fastapi import FastAPI
+from core_kit.web import make_health_router
+
+from myapp import __version__   # đúng version của app ([project].version lúc build)
+
+app = FastAPI()
+app.include_router(make_health_router(__version__))
+```
+
+### 2.8. Công cụ mã hóa cấu hình .env (`core_kit.tools.encrypt_env`)
 
 #### Cách 1: Sử dụng qua dòng lệnh (CLI)
 Sau khi cài đặt `core_kit`, lệnh `encrypt-env` (hoặc `core-kit-encrypt-env`) có sẵn trong terminal:
@@ -221,7 +247,7 @@ plaintext = decrypt_val(ciphertext)
 # -> MySecretDbPassword
 ```
 
-### 2.8. Đóng gói exe và phát hành bản giao khách (`corekit build` / `corekit release`)
+### 2.9. Đóng gói exe và phát hành bản giao khách (`corekit build` / `corekit release`)
 
 Cài `core-kit[build]` vào dependency group `dev` của app (xem mục 1), rồi chạy trong thư mục app (`apps/<tên>/`). Lệnh chỉ đọc `pyproject.toml` ở thư mục hiện tại. Backend đóng gói duy nhất là **Nuitka**; lần đầu Nuitka tự tải trình biên dịch C (MinGW64) nếu máy chưa có.
 
@@ -242,6 +268,7 @@ extra_args = []                      # truyền thẳng cho Nuitka khi schema kh
 
 [tool.corekit.release]
 include = ["docs/HUONG_DAN.pdf"]     # tài liệu đi kèm bản giao khách
+health_path = "/health"             # đường dẫn health ghi vào release.json (mặc định /health, phải bắt đầu bằng /)
 ```
 
 **`uv run corekit build`** hỏi chế độ (Enter = giao khách) và, khi có nhiều target, target cần build (Enter = tất cả). Kết quả ở `build/<fast|release>/<name>/`, đã kèm `.env` (hoặc `.env.example` nếu chưa có `.env`) và các mục `copy` — bấm exe là chạy.
@@ -259,8 +286,29 @@ Chạy không tương tác (CI): `corekit build --release --target MyApp` (`--ta
 2. chọn version (patch/minor/major/giữ nguyên; CI: `--bump patch`), từ chối nếu tag đã tồn tại;
 3. kiểm `.env.example`, các mục `include`, mục CHANGELOG của version mới (thiếu thì cảnh báo, hỏi tiếp tục);
 4. ghi version vào `pyproject.toml` (và `uv lock`), build giao khách mọi target — lỗi thì trả lại như cũ;
-5. đóng `dist/<name>-<version>-win-x64.zip` cho mỗi target: một thư mục gốc `<name>-<version>/`, **không có `.env`**, luôn có `.env.example`, kèm `include`;
+5. đóng `dist/<name>-<version>-win-x64.zip` cho mỗi target: một thư mục gốc `<name>-<version>/`, **không có `.env`**, luôn có `.env.example`, kèm `include` và Manifest phát hành `release.json`;
 6. commit `chore(release): <app> vX.Y.Z` + tag `<app>-vX.Y.Z`;
 7. hỏi (mặc định Không; CI: `--publish`/`--no-publish`) rồi mới push và tạo GitHub Release kèm các zip (cần GitHub CLI `gh`), notes lấy từ CHANGELOG hoặc tự sinh.
 
-Code app nên dùng `core_kit.utils.app_dir()` (thư mục chứa exe: `.env`, `models/`, `logs/`) và `bundle_dir()` (dữ liệu gom kèm `datas`) thay cho `__file__`, vì bản onefile chạy từ thư mục giải nén tạm.
+**Manifest phát hành `release.json`** nằm ở gốc mỗi zip (ngang `.env.example`), để công cụ cài (ví dụ `nssm_manager`) biết đang cài repo nào, app nào, version nào và gọi health ở đâu mà không đoán từ tên file. Mỗi zip một manifest đúng target của nó:
+
+```json
+{
+  "repo": "kho",
+  "app": "server",
+  "target": "KhoServer",
+  "version": "1.2.0",
+  "built_at": "2026-11-11T09:30:00+07:00",
+  "health_path": "/health",
+  "core_kit": "0.4.0"
+}
+```
+
+- `repo`: tên thư mục gốc repo git chứa app (không có `.git` thì tên thư mục app);
+- `app`: `[project].name`;
+- `target`: tên Build Target;
+- `built_at`: ISO 8601, giờ địa phương kèm offset;
+- `health_path`: `[tool.corekit.release].health_path`, mặc định `/health`; công cụ cài ghép với port thành Health URL. Phải là chuỗi bắt đầu bằng `/`, sai kiểu thì lệnh dừng với lỗi cấu hình như các khóa khác;
+- `core_kit`: version `core_kit` chạy lệnh release.
+
+Code app nên dùng `core_kit.utils.app_dir()` (thư mục chứa exe: `.env`, `models/`), `data_dir()` (dữ liệu sinh lúc chạy: `logs/`, SQLite...; theo biến môi trường `DATA_DIR` nếu có) và `bundle_dir()` (dữ liệu gom kèm `datas`) thay cho `__file__`, vì bản onefile chạy từ thư mục giải nén tạm (xem mục 2.6).

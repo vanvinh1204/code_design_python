@@ -9,6 +9,15 @@ và quy chuẩn [Semantic Versioning](https://semver.org/lang/vi/).
 
 ## [Unreleased]
 
+### Đã thêm (Added)
+- **Package `core_kit.web`** (extra `web`, cần `fastapi`): `make_health_router(version)` trả về `APIRouter` có `GET /health` → `200 {"status": "ok", "version": "<version>"}`. Không tự gắn vào app, không kiểm tra DB hay dịch vụ phụ thuộc, không cần xác thực; app gắn trong `entrypoints/api/` để công cụ vận hành (`nssm_manager`) biết web còn trả lời và đang chạy bản nào.
+- `core_kit.utils.data_dir()` (export cạnh `app_dir()` / `bundle_dir()`): thư mục dữ liệu sinh lúc chạy (Data Dir) — là biến môi trường `DATA_DIR` nếu được đặt (tự tạo thư mục nếu chưa có), không thì bằng `app_dir()`. Chạy dev, chạy exe tay, chạy dưới Windows service đều một đường code. Glossary thêm **Data Dir**.
+- `corekit release` ghi **Manifest phát hành `release.json`** vào gốc mỗi Bản giao khách (ngang `.env.example`), một manifest cho mỗi Build Target: `repo`, `app`, `target`, `version`, `built_at` (ISO 8601 kèm offset), `health_path` (mặc định `/health`, đổi qua `[tool.corekit.release].health_path`, phải bắt đầu bằng `/`), `core_kit`.
+
+### Đã thay đổi (Changed)
+- `setup_logger` neo thư mục log tương đối (mặc định `logs`) vào `data_dir()` thay vì chỉ neo vào `app_dir()` khi chạy bản đóng gói: đặt `DATA_DIR` thì log ghi vào `<DATA_DIR>/logs/` kể cả khi chạy dev; không đặt thì như trước (cạnh exe, hoặc thư mục hiện tại khi chạy dev). Đường dẫn tuyệt đối truyền vào vẫn được tôn trọng.
+- Docstring module `core_kit.utils.paths` đổi ví dụ chạy dev `py main.py` thành `uv run main.py` và nêu rõ Data Dir khác App Dir ở đâu.
+
 ---
 
 ## [0.3.0] - 2026-11-07

@@ -2,19 +2,23 @@
 `corekit release`: phát hành Bản giao khách.
 
 Trình tự: git sạch → chọn version → kiểm .env.example / include / CHANGELOG → ghi version
-→ build giao khách mọi target → zip từng target → commit + tag `<app>-vX.Y.Z`
+→ build giao khách mọi target → zip từng target (kèm Manifest phát hành `release.json`)
+→ commit + tag `<app>-vX.Y.Z`
 → (hỏi) push + GitHub Release để lưu trữ. Lỗi trước khi commit thì trả lại pyproject.toml/uv.lock.
 """
 
 from __future__ import annotations
 
+import json
 import re
 import tempfile
 import zipfile
 from dataclasses import replace
+from datetime import datetime
 from pathlib import Path
-from typing import List, Optional
+from typing import Any, List, Optional
 
+from core_kit import __version__ as CORE_KIT_VERSION
 from core_kit.cli.build import RELEASE, build_all, output_dir, validate_target
 from core_kit.cli.menu import choose, confirm
 from core_kit.cli.ports import CorekitError, Ports, ProcessResult
@@ -22,6 +26,7 @@ from core_kit.cli.project import BuildTarget, Project
 
 PLATFORM = "win-x64"
 BUMPS = ("patch", "minor", "major", "keep")
+MANIFEST = "release.json"
 
 
 def next_version(current: str, bump: str) -> str:
@@ -77,8 +82,30 @@ def zip_name(target: BuildTarget, version: str) -> str:
     return f"{target.name}-{version}-{PLATFORM}.zip"
 
 
+def repo_name(root: Path) -> str:
+    """Tên thư mục gốc repo git chứa app (thư mục có `.git`); không tìm thấy thì lấy tên thư mục app."""
+    for folder in (root, *root.parents):
+        if (folder / ".git").exists():
+            return folder.name
+    return root.name
+
+
+def manifest(project: Project, target: BuildTarget) -> dict[str, Any]:
+    """Manifest phát hành: công cụ cài đọc để biết repo, app, target, version và đường dẫn health."""
+    return {
+        "repo": repo_name(project.root),
+        "app": project.name,
+        "target": target.name,
+        "version": project.version,
+        # Giờ địa phương kèm offset UTC, ví dụ 2026-11-11T09:30:00+07:00.
+        "built_at": datetime.now().astimezone().isoformat(timespec="seconds"),
+        "health_path": project.health_path,
+        "core_kit": CORE_KIT_VERSION,
+    }
+
+
 def package_target(project: Project, target: BuildTarget) -> Path:
-    """Đóng Bản giao khách: thư mục gốc `<name>-<version>/`, không .env, luôn có .env.example."""
+    """Đóng Bản giao khách: thư mục gốc `<name>-<version>/`, không .env, luôn có .env.example và release.json."""
     src = output_dir(project, target, RELEASE)
     folder = f"{target.name}-{project.version}"
     dist = project.root / "dist"
@@ -92,6 +119,10 @@ def package_target(project: Project, target: BuildTarget) -> Path:
             if file.is_file() and rel not in (".env", ".env.example"):
                 archive.write(file, f"{folder}/{rel}")
         archive.write(project.root / ".env.example", f"{folder}/.env.example")
+        archive.writestr(
+            f"{folder}/{MANIFEST}",
+            json.dumps(manifest(project, target), ensure_ascii=False, indent=2) + "\n",
+        )
         for item in project.release_include:
             path = project.root / item
             if path.is_dir():

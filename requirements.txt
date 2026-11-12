@@ -16,6 +16,9 @@ pyserial>=3.5
 pillow>=10.0.0
 httpx>=0.25.0
 
+# Web (FastAPI): router GET /health
+fastapi>=0.110
+
 # Logging tập trung
 loguru>=0.7.0
 

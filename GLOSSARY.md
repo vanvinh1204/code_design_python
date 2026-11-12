@@ -44,10 +44,21 @@ _Avoid_: Spec, Build profile, Multidist
 File zip `<name>-<version>-win-x64.zip` mà `corekit release` tạo cho một Build Target: một thư mục gốc kèm version, không chứa `.env` thật, luôn có `.env.example` cùng tài liệu đi kèm.
 _Avoid_: Installer, Artifact, Bản build
 
+**Manifest phát hành (`release.json`)**:
+File JSON ở gốc Bản giao khách (ngang `.env.example`) mà `corekit release` ghi riêng cho từng Build Target: tên repo, tên app, tên Build Target, version, thời điểm build, đường dẫn health (`health_path`) và version `core_kit` lúc build. Công cụ cài đọc nó để biết đang cài gì thay vì đoán từ tên file zip.
+_Avoid_: Metadata, Build info, Manifest (khi nói chung chung)
+
+**Health URL**:
+URL HTTP (`http://127.0.0.1:<port><health_path>`) mà công cụ vận hành gọi để biết web còn trả lời và đang chạy bản nào, lưu trong biến môi trường `HEALTH_URL` của Windows service; `health_path` lấy từ **Manifest phát hành**, router `GET /health` của `core_kit.web` là đầu trả lời.
+_Avoid_: Status Probe (dành cho máy in), Health check, Ping
+
 **App Dir**:
-Thư mục chứa file exe của bản đóng gói (khi chạy dev là thư mục hiện tại), nơi đặt những thứ khách sửa hoặc thay được: `.env`, `models/`, `logs/`. Khác **Bundle Dir** (nơi chứa dữ liệu chỉ đọc gom kèm, là thư mục giải nén tạm với bản onefile).
+Thư mục chứa file exe của bản đóng gói (khi chạy dev là thư mục hiện tại), nơi cài app và đặt những thứ khách sửa hoặc thay được đi kèm bản cài: `.env`, `models/`. Khác **Bundle Dir** (nơi chứa dữ liệu chỉ đọc gom kèm, là thư mục giải nén tạm với bản onefile) và **Data Dir** (nơi ghi dữ liệu sinh lúc chạy).
 _Avoid_: Base dir, Root dir, `__file__` dir
 
+**Data Dir**:
+Thư mục dữ liệu sinh lúc chạy (`logs/`, SQLite, upload...), app tìm qua `data_dir()`: là biến môi trường `DATA_DIR` nếu được đặt (tự tạo nếu chưa có), không thì trùng **App Dir**. Tách khỏi **App Dir** vì nơi cài có thể không ghi được với tài khoản thường (ví dụ `%ProgramFiles%` khi chạy dưới Windows service); chạy dev, chạy exe tay, chạy dưới service đều một đường code.
+_Avoid_: Log dir, Working dir, Thư mục làm việc, `%ProgramData%` (khi nói chung chung)
 
 **Bundle Dir**:
 Thư mục chứa dữ liệu chỉ đọc gom kèm bản đóng gói (`datas`): trùng **App Dir** với bản standalone, là thư mục giải nén tạm với bản onefile; khi chạy dev là thư mục hiện tại.
